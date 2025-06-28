@@ -25,7 +25,7 @@ import { CustomerForm } from "./customer-form"
 interface CustomersProps {
     customers: Customer[];
     orders: Order[];
-    onAddCustomer: (data: Omit<Customer, 'id' | 'balance'>) => void;
+    onAddCustomer: (data: { name: string, email: string, initialDebt?: number }) => void;
     onUpdateCustomer: (data: Customer) => void;
     onDeleteCustomer: (id: string) => void;
     onAddPayment: (data: { customerId: string, total: number, description: string }) => void;

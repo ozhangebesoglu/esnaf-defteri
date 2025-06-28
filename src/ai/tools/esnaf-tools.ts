@@ -104,7 +104,7 @@ export const addStockAdjustmentTool = ai.defineTool(
 export const addCustomerTool = ai.defineTool(
   {
     name: 'addCustomer',
-    description: 'Yeni bir müşteri oluştur ve sisteme kaydet.',
+    description: 'Yeni bir müşteri oluştur ve sisteme kaydet. Müşterinin başlangıç borcu varsa, bunu da belirtebilirsin.',
     inputSchema: z.object({
       customerName: z
         .string()
@@ -113,6 +113,7 @@ export const addCustomerTool = ai.defineTool(
         .string()
         .email()
         .describe("Yeni müşterinin e-posta adresi."),
+      initialDebt: z.number().describe("Müşterinin başlangıç borç tutarı. Yoksa belirtme.").optional(),
     }),
     outputSchema: z.any(),
   },

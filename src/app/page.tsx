@@ -81,9 +81,32 @@ export default function Home() {
   // --- Handlers ---
   
   // Customers
-  const handleAddCustomer = (data: Omit<Customer, 'id' | 'balance'>) => {
-    const newCustomer: Customer = { id: generateId('CUS'), name: data.name, email: data.email, balance: 0 };
+  const handleAddCustomer = (data: { name: string; email: string; initialDebt?: number }) => {
+    const newId = generateId('CUS');
+    const newCustomer: Customer = { 
+        id: newId, 
+        name: data.name, 
+        email: data.email, 
+        balance: data.initialDebt || 0 
+    };
+
     setCustomers(prev => [...prev, newCustomer]);
+
+    // If there's an initial debt, add a corresponding "sale" for it to keep the ledger consistent.
+    if (data.initialDebt && data.initialDebt > 0) {
+        const newOrder: Order = {
+            id: generateId('ORD'),
+            customerId: newId,
+            customerName: data.name,
+            date: new Date().toISOString(),
+            status: 'Tamamlandı',
+            items: 1,
+            description: 'Başlangıç Bakiyesi / Devir',
+            total: data.initialDebt,
+        };
+        setOrders(prev => [newOrder, ...prev]);
+    }
+    
     toast({ title: "Müşteri Eklendi", description: `${newCustomer.name} başarıyla eklendi.` });
   };
   const handleUpdateCustomer = (data: Customer) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,7 +28,7 @@ interface AiChatProps {
     onAddPayment: (data: { customerId: string, total: number, description: string }) => void;
     onAddExpense: (data: Omit<Expense, 'id' | 'date'>) => void;
     onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void;
-    onAddCustomer: (data: Omit<Customer, 'id' | 'balance'>) => void;
+    onAddCustomer: (data: { name: string, email: string, initialDebt?: number }) => void;
     onAddCashSale: (data: { description: string, total: number }) => void;
     onDeleteCustomer: (id: string) => void;
     onDeleteProduct: (id: string) => void;
@@ -73,6 +73,7 @@ export default function AiChat({
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -80,6 +81,17 @@ export default function AiChat({
       message: '',
     },
   });
+  
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTo({
+            top: scrollAreaRef.current.scrollHeight,
+            behavior: 'smooth',
+        });
+    }
+  }, [messages]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const userMessage: Message = { role: 'user', content: values.message };
@@ -101,7 +113,7 @@ export default function AiChat({
       };
 
       const response = await chatWithAssistant({
-        chatHistory: newMessages,
+        chatHistory: newMessages.map(m => ({role: m.role, content: m.content})),
         appData,
       });
       
@@ -167,7 +179,7 @@ export default function AiChat({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
-        <ScrollArea className="flex-1 pr-4 -mr-4">
+        <ScrollArea className="flex-1 pr-4 -mr-4" ref={scrollAreaRef}>
             <div className="space-y-6">
                 {messages.map((message, index) => (
                     <div key={index} className={cn("flex items-start gap-4", message.role === 'user' && 'justify-end')}>

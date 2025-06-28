@@ -1,14 +1,18 @@
 "use client"
 
-import { recentOrders, customers, products } from "@/lib/data"
+import { useState } from "react"
+import { recentOrders, customers } from "@/lib/data"
 import type { Order } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Pencil } from "lucide-react"
 import { Badge } from "./ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { SaleForm } from "./sale-form"
 
 export default function SaleDetail({ orderId, onBack }: { orderId: string, onBack: () => void }) {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const order = recentOrders.find(o => o.id === orderId)
   
   if (!order) {
@@ -35,6 +39,18 @@ export default function SaleDetail({ orderId, onBack }: { orderId: string, onBac
   
   return (
     <div className="grid gap-6">
+       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Satışı Düzenle</DialogTitle>
+              <DialogDescription>
+                 {order.id} numaralı satışı düzenleyin.
+              </DialogDescription>
+            </DialogHeader>
+            <SaleForm sale={order} setOpen={setIsEditDialogOpen} />
+          </DialogContent>
+        </Dialog>
+
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" className="h-7 w-7" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
@@ -46,7 +62,13 @@ export default function SaleDetail({ orderId, onBack }: { orderId: string, onBac
           </h1>
           <p className="text-sm text-muted-foreground">Tarih: 23.10.2023</p>
         </div>
-        <Badge variant={getStatusVariant(order.status)} className="ml-auto sm:ml-0">{order.status}</Badge>
+        <div className="ml-auto flex items-center gap-2">
+            <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
+            <Button size="sm" variant="outline" onClick={() => setIsEditDialogOpen(true)}>
+                <Pencil className="h-4 w-4" />
+                Düzenle
+            </Button>
+        </div>
       </div>
       
       <div className="grid gap-4 md:grid-cols-2">

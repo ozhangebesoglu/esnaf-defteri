@@ -1,13 +1,17 @@
 "use client"
 
+import { useState } from "react"
 import { products, stockAdjustments } from "@/lib/data"
 import type { Product, StockAdjustment } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ProductIcon } from "./product-icons"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Pencil } from "lucide-react"
 import { Badge } from "./ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { ProductForm } from "./product-form"
+
 
 const categoryColors: { [key in StockAdjustment['category']]: string } = {
   'Bozulma': "bg-yellow-100 text-yellow-800",
@@ -20,6 +24,7 @@ const categoryColors: { [key in StockAdjustment['category']]: string } = {
 
 
 export default function ProductDetail({ productId, onBack }: { productId: string, onBack: () => void }) {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const product = products.find(p => p.id === productId)
   const adjustments = stockAdjustments.filter(adj => adj.productId === productId)
 
@@ -36,6 +41,18 @@ export default function ProductDetail({ productId, onBack }: { productId: string
 
   return (
     <div className="grid gap-6">
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Ürünü Düzenle</DialogTitle>
+              <DialogDescription>
+                {product.name} ürününün detaylarını güncelle.
+              </DialogDescription>
+            </DialogHeader>
+            <ProductForm product={product} setOpen={setIsEditDialogOpen} />
+          </DialogContent>
+        </Dialog>
+
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" className="h-7 w-7" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
@@ -47,11 +64,17 @@ export default function ProductDetail({ productId, onBack }: { productId: string
                 {product.name}
             </h1>
         </div>
-        {product.stock <= product.lowStockThreshold ? (
-            <Badge variant="destructive" className="ml-auto sm:ml-0">Düşük Stok</Badge>
-        ) : (
-            <Badge variant="secondary" className="ml-auto sm:ml-0">Yeterli Stok</Badge>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+            {product.stock <= product.lowStockThreshold ? (
+                <Badge variant="destructive">Düşük Stok</Badge>
+            ) : (
+                <Badge variant="secondary">Yeterli Stok</Badge>
+            )}
+            <Button size="sm" variant="outline" onClick={() => setIsEditDialogOpen(true)}>
+                <Pencil className="h-4 w-4" />
+                Düzenle
+            </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

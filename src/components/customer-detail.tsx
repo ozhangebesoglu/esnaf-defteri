@@ -1,15 +1,19 @@
 "use client"
 
+import { useState } from "react"
 import { customers, recentOrders } from "@/lib/data"
 import type { Customer, Order } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Mail, Phone, TrendingUp, TrendingDown, Scale } from "lucide-react"
+import { ArrowLeft, TrendingUp, TrendingDown, Scale, Pencil } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "./ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { CustomerForm } from "./customer-form"
 
 export default function CustomerDetail({ customerId, onBack }: { customerId: string, onBack: () => void }) {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const customer = customers.find(c => c.id === customerId)
   const orders = recentOrders.filter(o => o.customerId === customerId)
 
@@ -39,22 +43,40 @@ export default function CustomerDetail({ customerId, onBack }: { customerId: str
 
   return (
     <div className="grid gap-6">
-      <div className="flex items-center gap-4">
+       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Müşteriyi Düzenle</DialogTitle>
+              <DialogDescription>
+                Detayları {customer.name} için güncelle.
+              </DialogDescription>
+            </DialogHeader>
+            <CustomerForm customer={customer} setOpen={setIsEditDialogOpen} />
+          </DialogContent>
+        </Dialog>
+
+      <div className="flex items-start gap-4">
         <Button variant="outline" size="icon" className="h-7 w-7" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
           <span className="sr-only">Geri</span>
         </Button>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-1">
             <Avatar className="hidden h-11 w-11 sm:flex">
                 <AvatarImage src={`https://avatar.vercel.sh/${customer.email}.png`} alt={customer.name} />
                 <AvatarFallback>{customer.name.charAt(0)}</AvatarFallback>
             </Avatar>
-            <div>
+            <div className="flex-1">
                 <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
                     {customer.name}
                 </h1>
                 <p className="text-sm text-muted-foreground">{customer.email}</p>
             </div>
+        </div>
+         <div className="ml-auto flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setIsEditDialogOpen(true)}>
+                <Pencil className="h-4 w-4" />
+                Düzenle
+            </Button>
         </div>
       </div>
 

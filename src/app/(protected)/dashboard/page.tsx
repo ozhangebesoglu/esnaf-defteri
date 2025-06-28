@@ -351,6 +351,7 @@ export default function DashboardPage() {
                   onUpdateCustomer={handleUpdateCustomer}
                   onDeleteCustomer={handleDeleteCustomer}
                   onAddPayment={handleAddPayment}
+                  onAddSale={handleAddSale}
                />;
       case 'satis-islemleri':
         return <SalesTransactions />;

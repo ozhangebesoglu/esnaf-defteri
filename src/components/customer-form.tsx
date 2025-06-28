@@ -14,7 +14,8 @@ export const customerSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(2, "İsim en az 2 karakter olmalıdır."),
   email: z.string().email("Geçersiz e-posta adresi.").optional().or(z.literal('')),
-  balance: z.coerce.number(),
+  balance: z.coerce.number().optional(), // Make balance optional for new customer form
+  initialDebt: z.coerce.number().optional(), // Add a field for initial debt
 })
 
 interface CustomerFormProps {
@@ -26,11 +27,16 @@ interface CustomerFormProps {
 export function CustomerForm({ customer, setOpen, onSave }: CustomerFormProps) {
   const form = useForm<z.infer<typeof customerSchema>>({
     resolver: zodResolver(customerSchema),
-    defaultValues: customer || { name: "", email: "", balance: 0 },
+    defaultValues: customer || { name: "", email: "", balance: 0, initialDebt: 0 },
   })
 
   function onSubmit(values: z.infer<typeof customerSchema>) {
-    onSave(values);
+    const dataToSave = {
+      ...values,
+      initialDebt: values.initialDebt || 0,
+      balance: customer ? values.balance : values.initialDebt,
+    };
+    onSave(dataToSave);
     setOpen(false);
   }
 
@@ -59,7 +65,7 @@ export function CustomerForm({ customer, setOpen, onSave }: CustomerFormProps) {
             </FormItem>
           )}
         />
-        {customer && (
+        {customer ? (
           <FormField
             control={form.control}
             name="balance"
@@ -67,6 +73,18 @@ export function CustomerForm({ customer, setOpen, onSave }: CustomerFormProps) {
               <FormItem>
                 <FormLabel>Mevcut Bakiye</FormLabel>
                 <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+           <FormField
+            control={form.control}
+            name="initialDebt"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Başlangıç Bakiyesi / Devir Borcu (İsteğe Bağlı)</FormLabel>
+                <FormControl><Input type="number" step="0.01" placeholder="Müşterinin size borcu varsa girin" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}

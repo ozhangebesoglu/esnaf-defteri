@@ -29,9 +29,10 @@ interface CustomersProps {
     onUpdateCustomer: (data: Customer) => void;
     onDeleteCustomer: (id: string) => void;
     onAddPayment: (data: { customerId: string, total: number, description: string }) => void;
+    onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'>) => void;
 }
 
-export default function Customers({ customers, orders, onAddCustomer, onUpdateCustomer, onDeleteCustomer, onAddPayment }: CustomersProps) {
+export default function Customers({ customers, orders, onAddCustomer, onUpdateCustomer, onDeleteCustomer, onAddPayment, onAddSale }: CustomersProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCustomerForEdit, setSelectedCustomerForEdit] = useState<Customer | undefined>(undefined);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
@@ -74,6 +75,7 @@ export default function Customers({ customers, orders, onAddCustomer, onUpdateCu
              onBack={() => setSelectedCustomerIdForDetail(null)}
              onUpdateCustomer={onUpdateCustomer}
              onAddPayment={onAddPayment}
+             onAddSale={onAddSale}
            />;
   }
 

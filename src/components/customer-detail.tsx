@@ -5,22 +5,25 @@ import type { Customer, Order } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, TrendingUp, TrendingDown, Scale, Pencil, CircleDollarSign } from "lucide-react"
+import { ArrowLeft, TrendingUp, TrendingDown, Scale, Pencil, CircleDollarSign, Plus } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "./ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { CustomerForm } from "./customer-form"
 import { PaymentForm } from "./payment-form"
+import { SaleForm } from "./sale-form"
 
-export default function CustomerDetail({ customer, orders, onBack, onUpdateCustomer, onAddPayment }: { 
+export default function CustomerDetail({ customer, orders, onBack, onUpdateCustomer, onAddPayment, onAddSale }: { 
   customer: Customer | undefined, 
   orders: Order[],
   onBack: () => void,
   onUpdateCustomer: (data: Customer) => void,
-  onAddPayment: (data: { customerId: string, total: number, description: string }) => void
+  onAddPayment: (data: { customerId: string, total: number, description: string }) => void,
+  onAddSale: (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items'>) => void;
 }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
   const customerOrders = orders.filter(o => o.customerId === customer?.id)
 
   if (!customer) {
@@ -72,6 +75,24 @@ export default function CustomerDetail({ customer, orders, onBack, onUpdateCusto
           </DialogContent>
         </Dialog>
 
+        {/* Add Sale Dialog */}
+        <Dialog open={isSaleDialogOpen} onOpenChange={setIsSaleDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Yeni Satış Ekle (Veresiye)</DialogTitle>
+              <DialogDescription>
+                {customer.name} adlı müşteriye yeni bir borç ekleyin. Bu işlem müşterinin bakiyesini artıracaktır.
+              </DialogDescription>
+            </DialogHeader>
+            <SaleForm 
+              customers={[customer]}
+              sale={{ customerId: customer.id } as Order}
+              setOpen={setIsSaleDialogOpen} 
+              onSave={onAddSale}
+            />
+          </DialogContent>
+        </Dialog>
+
       <div className="flex items-start gap-4">
         <Button variant="outline" size="icon" className="h-7 w-7" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
@@ -94,6 +115,10 @@ export default function CustomerDetail({ customer, orders, onBack, onUpdateCusto
             </div>
         </div>
          <div className="ml-auto flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setIsSaleDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Yeni Satış
+            </Button>
             <Button size="sm" onClick={() => setIsPaymentDialogOpen(true)}>
                 <CircleDollarSign className="h-4 w-4" />
                 Ödeme Al
@@ -112,10 +137,10 @@ export default function CustomerDetail({ customer, orders, onBack, onUpdateCusto
             <Scale className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${customer.balance < 0 ? 'text-destructive' : 'text-green-600'}`}>
+            <div className={`text-2xl font-bold ${customer.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customer.balance)}
             </div>
-            <p className="text-xs text-muted-foreground">{customer.balance < 0 ? 'Müşteriye borcunuz var' : (customer.balance > 0 ? 'Müşterinin borcu var' : 'Bakiye sıfır')}</p>
+            <p className="text-xs text-muted-foreground">{customer.balance > 0 ? 'Müşterinin borcu var' : (customer.balance < 0 ? 'Müşteriye borcunuz var' : 'Bakiye sıfır')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -168,7 +193,7 @@ export default function CustomerDetail({ customer, orders, onBack, onUpdateCusto
                         <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
                     </TableCell>
                     <TableCell className={`text-right font-mono ${order.total < 0 ? 'text-green-600' : 'text-destructive'}`}>
-                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Math.abs(order.total))}
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total < 0 ? order.total : order.total)}
                     </TableCell>
                 </TableRow>
               )) : (

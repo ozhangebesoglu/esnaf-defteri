@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from "recharts"
 import { DollarSign, Users, TrendingUp, TrendingDown } from "lucide-react"
-import type { Customer, Expense, Sale } from "@/lib/types"
+import type { Customer, Expense, Order, Sale } from "@/lib/types"
 
 interface DashboardProps {
     customers: Customer[];
@@ -48,18 +48,20 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
     return acc;
   }, {} as any);
 
+  const totalRevenue = salesData.reduce((acc, sale) => acc + sale.revenue, 0);
+
 
   return (
     <div className="grid gap-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Ciro</CardTitle>
+            <CardTitle className="text-sm font-medium">Toplam Ciro (Son 6 Ay)</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₺23,845.67</div>
-            <p className="text-xs text-muted-foreground">geçen aydan +%12.1</p>
+            <div className="text-2xl font-bold">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalRevenue)}</div>
+            <p className="text-xs text-muted-foreground">Grafikteki verilere göre</p>
           </CardContent>
         </Card>
         <Card>
@@ -83,7 +85,7 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
             <div className="text-2xl font-bold text-green-600">
              {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Math.abs(totalDebts))}
             </div>
-            <p className="text-xs text-muted-foreground">{debtsCount} müşteriden</p>
+            <p className="text-xs text-muted-foreground">{debtsCount} müşteriye</p>
           </CardContent>
         </Card>
         <Card>

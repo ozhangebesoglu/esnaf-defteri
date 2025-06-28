@@ -105,13 +105,13 @@ export async function chatWithAssistant(
     ],
   });
 
-  const toolCalls = llmResponse.candidates[0]?.message.toolRequest?.calls;
+  const toolCalls = llmResponse.toolRequest?.calls;
 
   if (toolCalls && toolCalls.length > 0) {
     const toolCall = toolCalls[0]; // Assuming one tool call at a time for simplicity
     const toolInput = toolCall.input;
     let action: z.infer<typeof ChatActionSchema>;
-    let textResponse = llmResponse.text();
+    let textResponse = llmResponse.text;
 
     switch (toolCall.name) {
       case 'addSale':
@@ -197,7 +197,7 @@ export async function chatWithAssistant(
 
   // If no tool was called, just return the text response
   return {
-    textResponse: llmResponse.text(),
+    textResponse: llmResponse.text,
     action: undefined,
   };
 }

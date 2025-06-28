@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,9 +12,14 @@ import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Customer, Product, Order, Expense, StockAdjustment, CashboxHistory, MonitoringAlert } from '@/lib/types';
+
+export type Message = {
+    role: 'user' | 'model';
+    content: string;
+};
 
 interface AiChatProps {
     customers: Customer[];
@@ -24,6 +29,8 @@ interface AiChatProps {
     stockAdjustments: StockAdjustment[];
     cashboxHistory: CashboxHistory[];
     alerts: MonitoringAlert[];
+    chatHistory: Message[];
+    setChatHistory: (messages: Message[] | ((prevMessages: Message[]) => Message[])) => void;
     onAddSale: (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items'>) => void;
     onAddPayment: (data: { customerId: string, total: number, description: string }) => void;
     onAddExpense: (data: Omit<Expense, 'id' | 'date'>) => void;
@@ -41,10 +48,6 @@ const formSchema = z.object({
   message: z.string().min(1, 'Mesaj boş olamaz.'),
 });
 
-type Message = {
-    role: 'user' | 'model';
-    content: string;
-};
 
 export default function AiChat({
     customers,
@@ -54,6 +57,8 @@ export default function AiChat({
     stockAdjustments,
     cashboxHistory,
     alerts,
+    chatHistory,
+    setChatHistory,
     onAddSale,
     onAddPayment,
     onAddExpense,
@@ -66,12 +71,6 @@ export default function AiChat({
     onDeleteExpense,
     onDeleteStockAdjustment
 }: AiChatProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'model',
-      content: 'Merhaba! Ben Esnaf Defteri asistanınızım. "Ahmet Yılmaz\'a 250 liralık satış ekle" gibi komutlar verebilir veya "En borçlu müşteri kim?" gibi sorular sorabilirsiniz.',
-    },
-  ]);
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -90,13 +89,13 @@ export default function AiChat({
             behavior: 'smooth',
         });
     }
-  }, [messages]);
+  }, [chatHistory]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const userMessage: Message = { role: 'user', content: values.message };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    const newMessages = [...chatHistory, userMessage];
+    setChatHistory(newMessages);
     
     setIsLoading(true);
     form.reset();
@@ -113,12 +112,12 @@ export default function AiChat({
       };
 
       const response = await chatWithAssistant({
-        chatHistory: newMessages.map(m => ({role: m.role, content: m.content})),
+        chatHistory: newMessages,
         appData,
       });
       
       const modelMessage: Message = { role: 'model', content: response.textResponse };
-      setMessages((current) => [...current, modelMessage]);
+      setChatHistory((current) => [...current, modelMessage]);
 
       if (response.action) {
         switch (response.action.type) {
@@ -164,7 +163,7 @@ export default function AiChat({
         role: 'model',
         content: 'Üzgünüm, bir hata oluştu. Lütfen daha sonra tekrar deneyin.',
       };
-      setMessages((current) => [...current, errorMessage]);
+      setChatHistory((current) => [...current, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -181,7 +180,7 @@ export default function AiChat({
       <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
         <ScrollArea className="flex-1 pr-4 -mr-4" ref={scrollAreaRef}>
             <div className="space-y-6">
-                {messages.map((message, index) => (
+                {chatHistory.map((message, index) => (
                     <div key={index} className={cn("flex items-start gap-4", message.role === 'user' && 'justify-end')}>
                         {message.role === 'model' && (
                              <Avatar className="h-9 w-9 border">

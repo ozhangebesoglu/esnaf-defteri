@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs } from "firebase/firestore";
 
 import {
   Sidebar,
@@ -45,12 +45,9 @@ import Suppliers from '@/components/suppliers';
 import Staff from '@/components/staff';
 import Campaigns from '@/components/campaigns';
 
-import { 
-  salesData,
-  initialAlerts, // Keep alerts as mock data for now
-} from '@/lib/data';
-import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert, Supplier, Staff as StaffType } from '@/lib/types';
+import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert, Supplier, Staff as StaffType, Sale } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
+import { initialAlerts, salesData as mockSalesData } from '@/lib/data';
 
 type View = 
   'anasayfa' | 
@@ -106,6 +103,7 @@ export default function DashboardPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [staff, setStaff] = useState<StaffType[]>([]);
   const [alerts, setAlerts] = useState<MonitoringAlert[]>(initialAlerts);
+  const [salesData, setSalesData] = useState<Sale[]>(mockSalesData);
   
   const [chatHistory, setChatHistory] = useState<Message[]>([
     {
@@ -134,7 +132,7 @@ export default function DashboardPage() {
         const q = query(collection(db, collectionName), where("userId", "==", user.uid));
         return onSnapshot(q, (querySnapshot) => {
             const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-            if (collectionName === 'orders' || collectionName === 'expenses' || collectionName === 'cashboxHistory') {
+            if (collectionName === 'orders' || collectionName === 'expenses' || collectionName === 'cashboxHistory' || collectionName === 'stockAdjustments') {
               items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             }
             setState(items);
@@ -189,15 +187,27 @@ export default function DashboardPage() {
     toast({ title: "Müşteri Güncellendi", description: `${data.name} bilgileri güncellendi.` });
   };
   const handleDeleteCustomer = async (id: string) => {
-    await deleteDoc(doc(db, "customers", id));
-    toast({ title: "Müşteri Silindi", description: "Müşteri başarıyla silindi.", variant: "destructive" });
+    if (!user) return;
+    const batch = writeBatch(db);
+
+    const customerRef = doc(db, "customers", id);
+    batch.delete(customerRef);
+
+    const ordersQuery = query(collection(db, 'orders'), where("userId", "==", user.uid), where("customerId", "==", id));
+    const ordersSnapshot = await getDocs(ordersQuery);
+    ordersSnapshot.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+    toast({ title: "Müşteri Silindi", description: "Müşteri ve ilgili tüm işlemleri başarıyla silindi.", variant: "destructive" });
   };
 
   // Products
   const handleAddProduct = async (data: Omit<Product, 'id' | 'stock' | 'userId'>) => {
      if(!user) return;
     const newProduct = { ...data, stock: 0, userId: user.uid };
-    const docRef = await addDoc(getCollectionRef('products'), newProduct);
+    await addDoc(getCollectionRef('products'), newProduct);
     toast({ title: "Ürün Eklendi", description: `${newProduct.name} başarıyla eklendi.` });
   };
   const handleUpdateProduct = async (data: Product) => {
@@ -206,8 +216,20 @@ export default function DashboardPage() {
     toast({ title: "Ürün Güncellendi", description: `${data.name} bilgileri güncellendi.` });
   };
   const handleDeleteProduct = async (id: string) => {
-    await deleteDoc(doc(db, "products", id));
-    toast({ title: "Ürün Silindi", description: "Ürün başarıyla silindi.", variant: "destructive" });
+    if (!user) return;
+    const batch = writeBatch(db);
+
+    const productRef = doc(db, "products", id);
+    batch.delete(productRef);
+
+    const adjustmentsQuery = query(collection(db, 'stockAdjustments'), where("userId", "==", user.uid), where("productId", "==", id));
+    const adjustmentsSnapshot = await getDocs(adjustmentsQuery);
+    adjustmentsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+    toast({ title: "Ürün Silindi", description: "Ürün ve ilgili stok hareketleri başarıyla silindi.", variant: "destructive" });
   };
 
   // Sales (Orders)

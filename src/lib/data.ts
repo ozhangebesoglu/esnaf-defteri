@@ -9,6 +9,7 @@ export const salesData: Sale[] = [
   { month: 'Haz', revenue: 5500 },
 ];
 
+// This is now just mock data and not used for core functionality
 export const initialAlerts: MonitoringAlert[] = [
   { id: 'ALT001', severity: 'high', title: 'Negatif Stok: Antrikot', description: 'Antrikot stok adedi -2. Lütfen hemen inceleyin.', timestamp: new Date('2023-10-27T09:15:32').toISOString() },
   { id: 'ALT002', severity: 'medium', title: 'Yüksek İndirim Uygulandı', description: 'ORD003 numaralı siparişe %50 indirim uygulandı, standart %20 limiti aşıldı.', timestamp: new Date('2023-10-26T14:30:15').toISOString() },

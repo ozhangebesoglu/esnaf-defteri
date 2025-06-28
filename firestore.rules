@@ -1,7 +1,10 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read/write their own data, identified by the userId field.
+    // Users can only read, write, and delete their own data.
+    // This rule assumes that every document in every collection
+    // has a 'userId' field that matches the authenticated user's UID.
     match /{collection}/{docId} {
       allow read, write, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }

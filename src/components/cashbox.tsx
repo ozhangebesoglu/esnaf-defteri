@@ -4,8 +4,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { useToast } from "@/hooks/use-toast"
-import { Wallet, TrendingUp, TrendingDown, Landmark, UtensilsCrossed } from "lucide-react"
+import { Wallet, TrendingUp, TrendingDown, Landmark } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -13,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import type { CashboxHistory, Order } from "@/lib/types"
+import type { CashboxHistory } from "@/lib/types"
 
 const closeDaySchema = z.object({
   actualBalance: z.coerce.number().min(0, "Kasa sayımı negatif olamaz."),
@@ -56,41 +55,25 @@ function CloseDayForm({ setOpen, expectedBalance, onDayClose }: { setOpen: (open
   )
 }
 
+interface CashboxProps {
+    history: CashboxHistory[];
+    openingBalance: number;
+    cashIn: number;
+    cashOut: number;
+    expectedBalance: number;
+    onDayClose: (actualBalance: number) => void;
+}
 
-export default function Cashbox({ history, setHistory, cashSales }: { history: CashboxHistory[], setHistory: (history: CashboxHistory[]) => void, cashSales: Order[] }) {
+export default function Cashbox({ history, openingBalance, cashIn, cashOut, expectedBalance, onDayClose }: CashboxProps) {
   const [open, setOpen] = useState(false);
-  const { toast } = useToast();
-  
-  const openingBalance = history[0]?.closing || 0;
-  const cashIn = 1250.75; // Mock data, should be calculated from actual sales
-  const cashOut = 320.50; // Mock data, should be calculated from actual expenses
-  const expectedBalance = openingBalance + cashIn - cashOut;
-
-  const handleDayClose = (actualBalance: number) => {
-    const difference = actualBalance - expectedBalance;
-    const newEntry: CashboxHistory = {
-        id: `CBH${history.length + 1}`,
-        date: new Date().toLocaleDateString('tr-TR'),
-        opening: openingBalance,
-        cashIn: cashIn,
-        cashOut: cashOut,
-        closing: actualBalance,
-        difference: difference
-    };
-    setHistory([newEntry, ...history]);
-    toast({
-      title: "Gün Kapatıldı",
-      description: `Kasa sayımı tamamlandı. Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(difference)}`,
-    });
-  };
 
   return (
     <div className="grid gap-6">
        <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>Günlük Nakit Durumu</CardTitle>
-                <CardDescription>Mevcut gün için nakit hareketleri özeti.</CardDescription>
+                <CardTitle>Günlük Kasa Yönetimi</CardTitle>
+                <CardDescription>Mevcut gün için nakit hareketleri özeti ve gün sonu işlemi.</CardDescription>
             </div>
             <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -106,7 +89,7 @@ export default function Cashbox({ history, setHistory, cashSales }: { history: C
                     Gün sonu kasa sayımını yaparak günü kapatın.
                 </DialogDescription>
                 </DialogHeader>
-                <CloseDayForm setOpen={setOpen} expectedBalance={expectedBalance} onDayClose={handleDayClose} />
+                <CloseDayForm setOpen={setOpen} expectedBalance={expectedBalance} onDayClose={onDayClose} />
             </DialogContent>
             </Dialog>
         </CardHeader>
@@ -128,7 +111,7 @@ export default function Cashbox({ history, setHistory, cashSales }: { history: C
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold text-green-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(cashIn)}</div>
-                    <p className="text-xs text-muted-foreground">Nakit satışlar ve tahsilatlar</p>
+                    <p className="text-xs text-muted-foreground">Bugünkü nakit satışlar ve tahsilatlar</p>
                 </CardContent>
             </Card>
             <Card>
@@ -138,7 +121,7 @@ export default function Cashbox({ history, setHistory, cashSales }: { history: C
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold text-destructive">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(cashOut)}</div>
-                    <p className="text-xs text-muted-foreground">Nakit ödemeler ve harcamalar</p>
+                    <p className="text-xs text-muted-foreground">Bugünkü nakit ödemeler ve harcamalar</p>
                 </CardContent>
             </Card>
              <Card>
@@ -154,39 +137,6 @@ export default function Cashbox({ history, setHistory, cashSales }: { history: C
         </CardContent>
       </Card>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Peşin Satışlar (Restoran/Tezgah)</CardTitle>
-          <CardDescription>Gün içinde yapılan ve bir müşteriye bağlanmayan satışlar.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>İşlem No</TableHead>
-                <TableHead>Tarih</TableHead>
-                <TableHead>Açıklama</TableHead>
-                <TableHead className="text-right">Tutar</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cashSales.length > 0 ? cashSales.map((sale) => (
-                <TableRow key={sale.id}>
-                  <TableCell className="font-medium">{sale.id}</TableCell>
-                  <TableCell>{sale.date}</TableCell>
-                  <TableCell>{sale.description}</TableCell>
-                  <TableCell className="text-right font-mono">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(sale.total)}</TableCell>
-                </TableRow>
-              )) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">Bugün peşin satış yapılmadı.</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>Gün Sonu Kasa Geçmişi</CardTitle>
@@ -207,7 +157,7 @@ export default function Cashbox({ history, setHistory, cashSales }: { history: C
             <TableBody>
               {history.length > 0 ? history.map((entry) => (
                 <TableRow key={entry.id}>
-                  <TableCell className="font-medium">{entry.date}</TableCell>
+                  <TableCell className="font-medium">{new Date(entry.date).toLocaleDateString('tr-TR')}</TableCell>
                   <TableCell className="text-right font-mono">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.opening)}</TableCell>
                   <TableCell className="text-right font-mono text-green-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.cashIn)}</TableCell>
                   <TableCell className="text-right font-mono text-destructive">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.cashOut)}</TableCell>

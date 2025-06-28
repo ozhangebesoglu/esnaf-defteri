@@ -12,7 +12,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Package, BookUser, ShieldAlert, Banknote, UtensilsCrossed, AreaChart, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Package, BookUser, ShieldAlert, Banknote, UtensilsCrossed, AreaChart, Sparkles, Wallet } from 'lucide-react';
 
 import Dashboard from '@/components/dashboard';
 import Customers from '@/components/customers';
@@ -20,6 +20,7 @@ import Monitoring from '@/components/monitoring';
 import Inventory from '@/components/inventory';
 import Financials from '@/components/financials';
 import Cashbox from '@/components/cashbox';
+import Restaurant from '@/components/restaurant';
 import Reports from '@/components/reports';
 import AiChat from '@/components/ai-chat';
 import { Logo } from '@/components/logo';
@@ -37,14 +38,15 @@ import {
 import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 
-type View = 'anasayfa' | 'envanter' | 'finansal' | 'cari' | 'kasa' | 'raporlar' | 'uyarilar' | 'yapay-zeka';
+type View = 'anasayfa' | 'envanter' | 'finansal' | 'cari' | 'restoran' | 'kasa' | 'raporlar' | 'uyarilar' | 'yapay-zeka';
 
 const viewTitles: Record<View, string> = {
   anasayfa: 'Anasayfa',
   envanter: 'Envanter Yönetimi',
   finansal: 'Finansal Durum',
   cari: 'Müşteriler',
-  kasa: 'Restoran Satışları',
+  restoran: 'Restoran Satışları',
+  kasa: 'Kasa Yönetimi',
   raporlar: 'Raporlar',
   uyarilar: 'Uyarılar',
   'yapay-zeka': 'Yapay Zeka Asistanı'
@@ -52,6 +54,15 @@ const viewTitles: Record<View, string> = {
 
 // A simple ID generator
 const generateId = (prefix: string) => `${prefix}${Math.random().toString(36).substr(2, 9)}`;
+
+// Date helper
+const isToday = (date: string | Date) => {
+  const today = new Date();
+  const someDate = new Date(date);
+  return someDate.getDate() === today.getDate() &&
+         someDate.getMonth() === today.getMonth() &&
+         someDate.getFullYear() === today.getFullYear();
+}
 
 export default function Home() {
   const [activeView, setActiveView] = useState<View>('anasayfa');
@@ -108,7 +119,7 @@ export default function Home() {
       ...data,
       id: generateId('ORD'),
       customerName: customer.name,
-      date: new Date().toLocaleString('tr-TR'),
+      date: new Date().toISOString(),
       status: 'Tamamlandı',
       items: data.description.split(',').length,
     };
@@ -130,7 +141,7 @@ export default function Home() {
       items: 1,
       total: -data.total, // Payment is a negative total
       status: 'Tamamlandı',
-      date: new Date().toLocaleString('tr-TR'),
+      date: new Date().toISOString(),
     };
     
     setOrders(prev => [newPayment, ...prev]);
@@ -148,8 +159,10 @@ export default function Home() {
     const orderToDelete = orders.find(o => o.id === id);
     if (!orderToDelete) return;
 
-    // Revert customer balance
-    setCustomers(prev => prev.map(c => c.id === orderToDelete.customerId ? { ...c, balance: c.balance - orderToDelete.total } : c));
+    // Revert customer balance if it's a credit sale
+    if(orderToDelete.customerId !== 'CASH_SALE') {
+        setCustomers(prev => prev.map(c => c.id === orderToDelete.customerId ? { ...c, balance: c.balance - orderToDelete.total } : c));
+    }
 
     setOrders(prev => prev.filter(o => o.id !== id));
     toast({ title: "Satış Silindi", description: "Satış kaydı silindi.", variant: "destructive" });
@@ -161,7 +174,7 @@ export default function Home() {
       id: generateId('CSH'),
       customerId: 'CASH_SALE', // Special ID for non-customer sales
       customerName: 'Peşin Satış',
-      date: new Date().toLocaleString('tr-TR'),
+      date: new Date().toISOString(),
       status: 'Tamamlandı',
       items: data.description.split(',').length,
       description: data.description,
@@ -175,7 +188,7 @@ export default function Home() {
 
   // Expenses
   const handleAddExpense = (data: Omit<Expense, 'id' | 'date'>) => {
-    const newExpense: Expense = { ...data, id: generateId('EXP'), date: new Date().toLocaleDateString('tr-TR') };
+    const newExpense: Expense = { ...data, id: generateId('EXP'), date: new Date().toISOString() };
     setExpenses(prev => [newExpense, ...prev]);
     toast({ title: "Gider Eklendi", description: "Yeni gider kaydı oluşturuldu." });
   };
@@ -197,7 +210,7 @@ export default function Home() {
       ...data, 
       id: generateId('ADJ'), 
       productName: product.name,
-      date: new Date().toLocaleString('tr-TR'),
+      date: new Date().toISOString(),
     };
     setStockAdjustments(prev => [newAdjustment, ...prev]);
     // Update product stock
@@ -220,6 +233,29 @@ export default function Home() {
     toast({ title: "Stok Hareketi Silindi", variant: "destructive" });
   };
 
+  // Cashbox Logic
+  const openingBalance = cashboxHistory[0]?.closing || 0;
+  const cashInToday = orders.filter(o => (o.customerId === 'CASH_SALE' || o.total < 0) && isToday(o.date)).reduce((sum, o) => sum + Math.abs(o.total), 0);
+  const cashOutToday = expenses.filter(e => isToday(e.date)).reduce((sum, e) => sum + e.amount, 0); // Assuming all expenses are cash
+  const expectedBalance = openingBalance + cashInToday - cashOutToday;
+
+  const handleDayClose = (actualBalance: number) => {
+    const difference = actualBalance - expectedBalance;
+    const newEntry: CashboxHistory = {
+        id: `CBH${cashboxHistory.length + 1}`,
+        date: new Date().toISOString(),
+        opening: openingBalance,
+        cashIn: cashInToday,
+        cashOut: cashOutToday,
+        closing: actualBalance,
+        difference: difference
+    };
+    setCashboxHistory([newEntry, ...cashboxHistory]);
+    toast({
+      title: "Gün Kapatıldı",
+      description: `Kasa sayımı tamamlandı. Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(difference)}`,
+    });
+  };
 
   const renderView = () => {
     switch (activeView) {
@@ -257,11 +293,16 @@ export default function Home() {
                   onDeleteCustomer={handleDeleteCustomer}
                   onAddPayment={handleAddPayment}
                />;
+      case 'restoran':
+        return <Restaurant cashSales={orders.filter(o => o.customerId === 'CASH_SALE')} />;
       case 'kasa':
         return <Cashbox 
-                  history={cashboxHistory} 
-                  setHistory={setCashboxHistory} 
-                  cashSales={orders.filter(o => o.customerId === 'CASH_SALE')}
+                  history={cashboxHistory}
+                  openingBalance={openingBalance}
+                  cashIn={cashInToday}
+                  cashOut={cashOutToday}
+                  expectedBalance={expectedBalance}
+                  onDayClose={handleDayClose}
                />;
       case 'raporlar':
         return <Reports customers={customers} expenses={expenses} orders={orders} products={products} />;
@@ -348,12 +389,22 @@ export default function Home() {
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('kasa')}
-                isActive={activeView === 'kasa'}
+                onClick={() => setActiveView('restoran')}
+                isActive={activeView === 'restoran'}
                 tooltip="Restoran"
               >
                 <UtensilsCrossed />
                 <span>Restoran</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('kasa')}
+                isActive={activeView === 'kasa'}
+                tooltip="Kasa"
+              >
+                <Wallet />
+                <span>Kasa</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>

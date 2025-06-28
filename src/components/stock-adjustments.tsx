@@ -269,7 +269,7 @@ export default function StockAdjustments({ stockAdjustments, products, onAddStoc
                   <TableCell>
                     <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
                   </TableCell>
-                  <TableCell>{adj.date}</TableCell>
+                  <TableCell>{new Date(adj.date).toLocaleString('tr-TR')}</TableCell>
                   <TableCell className="text-right space-x-1">
                     <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(adj)}>
                       <Pencil className="h-4 w-4" />

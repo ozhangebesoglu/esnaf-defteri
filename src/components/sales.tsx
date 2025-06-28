@@ -128,7 +128,7 @@ export default function Sales({ orders, customers, onAddSale, onUpdateSale, onDe
             {orders.length > 0 ? orders.map((order) => (
               <TableRow key={order.id} onClick={() => handleRowClick(order.id)} className="cursor-pointer">
                 <TableCell className="font-medium">{order.id}</TableCell>
-                <TableCell>{order.date}</TableCell>
+                <TableCell>{new Date(order.date).toLocaleString('tr-TR')}</TableCell>
                 <TableCell>{order.customerName}</TableCell>
                 <TableCell className={`text-right font-mono ${order.total < 0 ? 'text-green-600' : ''}`}>
                   {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total)}

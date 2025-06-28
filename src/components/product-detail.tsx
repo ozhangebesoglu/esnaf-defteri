@@ -134,7 +134,7 @@ export default function ProductDetail({ product, adjustments, onBack, onUpdatePr
             <TableBody>
               {adjustments.length > 0 ? adjustments.map((adj) => (
                 <TableRow key={adj.id}>
-                  <TableCell>{adj.date}</TableCell>
+                  <TableCell>{new Date(adj.date).toLocaleString('tr-TR')}</TableCell>
                    <TableCell>
                      <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
                    </TableCell>

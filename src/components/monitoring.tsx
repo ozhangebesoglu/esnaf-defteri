@@ -32,7 +32,7 @@ export default function Monitoring({ alerts }: { alerts: MonitoringAlert[] }) {
               <AlertTitle className="font-headline">{alert.title}</AlertTitle>
               <AlertDescription>
                 <p>{alert.description}</p>
-                <p className="text-xs text-muted-foreground mt-1">{alert.timestamp}</p>
+                <p className="text-xs text-muted-foreground mt-1">{new Date(alert.timestamp).toLocaleString('tr-TR')}</p>
               </AlertDescription>
             </Alert>
           )) : (

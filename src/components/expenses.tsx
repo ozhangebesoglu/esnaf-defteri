@@ -227,7 +227,7 @@ export default function Expenses({ expenses, onAddExpense, onUpdateExpense, onDe
             <TableBody>
               {expenses.length > 0 ? expenses.map((expense) => (
                 <TableRow key={expense.id}>
-                  <TableCell>{expense.date}</TableCell>
+                  <TableCell>{new Date(expense.date).toLocaleDateString('tr-TR')}</TableCell>
                   <TableCell className="font-medium">{expense.description}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={`${categoryColors[expense.category]}`}>{expense.category}</Badge>

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, TrendingUp, TrendingDown, Scale, Pencil, CircleDollarSign } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "./ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { CustomerForm } from "./customer-form"
 import { PaymentForm } from "./payment-form"
 
@@ -158,7 +158,7 @@ export default function CustomerDetail({ customer, orders, onBack, onUpdateCusto
               {customerOrders.length > 0 ? customerOrders.map((order) => (
                 <TableRow key={order.id}>
                     <TableCell className="font-medium">{order.id}</TableCell>
-                    <TableCell>{order.date}</TableCell>
+                    <TableCell>{new Date(order.date).toLocaleString('tr-TR')}</TableCell>
                     <TableCell>{order.description}</TableCell>
                     <TableCell className="text-center">
                         <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>

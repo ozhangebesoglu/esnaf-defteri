@@ -65,7 +65,7 @@ export default function SaleDetail({ order, customer, onBack, onUpdateSale }: {
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             Sipariş #{order.id}
           </h1>
-          <p className="text-sm text-muted-foreground">Tarih: {order.date}</p>
+          <p className="text-sm text-muted-foreground">Tarih: {new Date(order.date).toLocaleString('tr-TR')}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
             <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>

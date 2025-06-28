@@ -90,7 +90,6 @@ export async function chatWithAssistant(
   })).filter(m => m.role !== 'tool');
 
   const llmResponse = await ai.generate({
-    model: ai.model,
     messages: initialMessages,
     system: systemPrompt,
     tools: allTools,
@@ -133,7 +132,6 @@ export async function chatWithAssistant(
     });
 
     const finalLlmResponse = await ai.generate({
-        model: ai.model,
         messages: finalGenkitMessages as any,
         system: systemPrompt,
         tools: allTools,

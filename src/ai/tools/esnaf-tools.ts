@@ -23,6 +23,19 @@ export const addSaleTool = ai.defineTool(
   async input => input
 );
 
+export const addCashSaleTool = ai.defineTool(
+  {
+    name: 'addCashSale',
+    description: 'Veresiye olmayan, peşin (restoran/tezgah) satışı ekle. Bu işlem bir müşterinin borcunu etkilemez.',
+    inputSchema: z.object({
+      description: z.string().describe('Satılan ürünlerin veya hizmetin açıklaması.'),
+      total: z.number().describe('Satışın toplam tutarı (Türk Lirası).'),
+    }),
+    outputSchema: z.any(),
+  },
+  async input => input
+);
+
 export const addPaymentTool = ai.defineTool(
   {
     name: 'addPayment',
@@ -82,6 +95,24 @@ export const addStockAdjustmentTool = ai.defineTool(
           'Diğer',
         ])
         .describe('Stok hareketinin kategorisi.'),
+    }),
+    outputSchema: z.any(),
+  },
+  async input => input
+);
+
+export const addCustomerTool = ai.defineTool(
+  {
+    name: 'addCustomer',
+    description: 'Yeni bir müşteri oluştur ve sisteme kaydet.',
+    inputSchema: z.object({
+      customerName: z
+        .string()
+        .describe('Yeni müşterinin tam adı.'),
+      email: z
+        .string()
+        .email()
+        .describe("Yeni müşterinin e-posta adresi."),
     }),
     outputSchema: z.any(),
   },

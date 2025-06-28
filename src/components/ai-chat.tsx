@@ -28,6 +28,8 @@ interface AiChatProps {
     onAddPayment: (data: { customerId: string, total: number, description: string }) => void;
     onAddExpense: (data: Omit<Expense, 'id' | 'date'>) => void;
     onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void;
+    onAddCustomer: (data: Omit<Customer, 'id' | 'balance'>) => void;
+    onAddCashSale: (data: { description: string, total: number }) => void;
     onDeleteCustomer: (id: string) => void;
     onDeleteProduct: (id: string) => void;
     onDeleteSale: (id: string) => void;
@@ -56,6 +58,8 @@ export default function AiChat({
     onAddPayment,
     onAddExpense,
     onAddStockAdjustment,
+    onAddCustomer,
+    onAddCashSale,
     onDeleteCustomer,
     onDeleteProduct,
     onDeleteSale,
@@ -116,6 +120,12 @@ export default function AiChat({
                 break;
             case 'addStockAdjustment':
                 onAddStockAdjustment(response.action.payload);
+                break;
+            case 'addCustomer':
+                onAddCustomer(response.action.payload);
+                break;
+            case 'addCashSale':
+                onAddCashSale(response.action.payload);
                 break;
             case 'deleteCustomer':
                 onDeleteCustomer(response.action.payload);

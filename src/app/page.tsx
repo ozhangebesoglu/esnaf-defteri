@@ -155,6 +155,24 @@ export default function Home() {
     toast({ title: "Satış Silindi", description: "Satış kaydı silindi.", variant: "destructive" });
   };
 
+  // Cash Sales
+  const handleAddCashSale = (data: { description: string, total: number }) => {
+    const newOrder: Order = {
+      id: generateId('CSH'),
+      customerId: 'CASH_SALE', // Special ID for non-customer sales
+      customerName: 'Peşin Satış',
+      date: new Date().toLocaleString('tr-TR'),
+      status: 'Tamamlandı',
+      items: data.description.split(',').length,
+      description: data.description,
+      total: data.total,
+    };
+    
+    setOrders(prev => [newOrder, ...prev]);
+    // Note: This does not affect any customer's balance.
+    toast({ title: "Peşin Satış Eklendi", description: "Yeni peşin satış kaydı oluşturuldu." });
+  };
+
   // Expenses
   const handleAddExpense = (data: Omit<Expense, 'id' | 'date'>) => {
     const newExpense: Expense = { ...data, id: generateId('EXP'), date: new Date().toLocaleDateString('tr-TR') };
@@ -258,6 +276,8 @@ export default function Home() {
                   onAddPayment={handleAddPayment}
                   onAddExpense={handleAddExpense}
                   onAddStockAdjustment={handleAddStockAdjustment}
+                  onAddCustomer={handleAddCustomer}
+                  onAddCashSale={handleAddCashSale}
                   onDeleteCustomer={handleDeleteCustomer}
                   onDeleteProduct={handleDeleteProduct}
                   onDeleteSale={handleDeleteSale}

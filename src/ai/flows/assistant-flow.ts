@@ -14,6 +14,8 @@ import {
   addSaleTool,
   addExpenseTool,
   addStockAdjustmentTool,
+  addCustomerTool,
+  addCashSaleTool,
   deleteCustomerTool,
   deleteProductTool,
   deleteSaleTool,
@@ -56,6 +58,8 @@ const ChatActionSchema = z
       'addPayment',
       'addExpense',
       'addStockAdjustment',
+      'addCustomer',
+      'addCashSale',
       'deleteCustomer',
       'deleteProduct',
       'deleteSale',
@@ -77,7 +81,8 @@ export type ChatWithAssistantOutput = z.infer<
 >;
 
 const systemPrompt = `Sen bir kasap dükkanı için geliştirilmiş "Esnaf Defteri" uygulamasının yardımcı yapay zeka asistanısın. Kullanıcının sorularını, sağlanan JSON verilerini kullanarak yanıtla. Cevapların kısa, net ve bir esnafın anlayacağı dilde olsun.
-Kullanıcı bir işlem yapmak istediğinde (örneğin, "Ahmet Yılmaz'a 500 liralık satış ekle" veya "Ayşe Kaya'dan 100 lira ödeme aldım" veya "Ekim ayı kirası 5000 lira gider ekle"), uygun aracı çağır.
+Kullanıcı bir işlem yapmak istediğinde (örneğin, "Ahmet Yılmaz'a 500 liralık satış ekle", "Ayşe Kaya'dan 100 lira ödeme aldım", "Ekim ayı kirası 5000 lira gider ekle", "Yeni müşteri ekle: Adı Canan Güneş, e-postası canan@ornek.com", "Tezgahtan 200 liralık peşin satış yaptım"), uygun aracı çağır.
+"addSale" aracını sadece veresiye (borç) satışlar için kullan. Peşin satışlar için "addCashSale" aracını kullan.
 Sadece kullanıcı açıkça bir işlem yapmanı istediğinde araçları kullan. Bilgi soruyorsa, sadece metinle cevap ver.
 İşlem başarılı olursa kullanıcıyı bilgilendir. Bir müşteri veya ürün adı belirsizse veya bulunamazsa, kullanıcıdan netleştirmesini iste.
 ÖNEMLİ: Bir satış, gider veya stok hareketini silmek için kullanıcıdan işlem numarasını (ID) isteyebilirsin veya konuşma geçmişindeki verilerden bu ID'yi bulabilirsin. Örneğin, "ORD001 numaralı satışı sil".`;
@@ -113,6 +118,8 @@ export async function chatWithAssistant(
       addPaymentTool,
       addExpenseTool,
       addStockAdjustmentTool,
+      addCustomerTool,
+      addCashSaleTool,
       deleteCustomerTool,
       deleteProductTool,
       deleteSaleTool,
@@ -149,6 +156,16 @@ export async function chatWithAssistant(
           }
         } else {
           textResponse = `"${toolInput.customerName}" adında bir müşteri bulamadım. Lütfen müşterinin tam adını kontrol edin.`;
+        }
+        break;
+
+      case 'addCashSale':
+        action = {
+          type: 'addCashSale',
+          payload: toolInput,
+        };
+        if (!textResponse) {
+          textResponse = `${toolInput.total} TL tutarında peşin satış başarıyla eklendi.`;
         }
         break;
 
@@ -201,6 +218,19 @@ export async function chatWithAssistant(
           }
         } else {
           textResponse = `"${toolInput.productName}" adında bir ürün bulamadım. Lütfen ürünün tam adını kontrol edin.`;
+        }
+        break;
+
+      case 'addCustomer':
+        action = {
+          type: 'addCustomer',
+          payload: {
+            name: toolInput.customerName,
+            email: toolInput.email,
+          },
+        };
+        if (!textResponse) {
+          textResponse = `${toolInput.customerName} adlı yeni müşteri eklendi.`;
         }
         break;
       

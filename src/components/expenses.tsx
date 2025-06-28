@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { PlusCircle, Loader2 } from "lucide-react";
-import { categorizeStockAdjustment } from "@/ai/flows/categorize-stock-adjustment";
+import { categorizeExpense } from "@/ai/flows/categorize-expense-flow";
 import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
@@ -17,34 +17,31 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { stockAdjustments, products } from "@/lib/data";
-import type { StockAdjustment, Product } from "@/lib/types";
-import { ProductIcon } from "./product-icons";
+import { expenses } from "@/lib/data";
+import type { Expense } from "@/lib/types";
 
-const adjustmentSchema = z.object({
-  productId: z.string().min(1, "Lütfen bir ürün seçin."),
-  quantity: z.coerce.number().int("Miktar tam sayı olmalıdır."),
-  description: z.string().min(10, "Açıklama en az 10 karakter olmalıdır."),
-  category: z.enum(['Bozulma', 'Hırsızlık', 'Veri Giriş Hatası', 'Hatalı Ürün Alımı', 'İndirim', 'Diğer']),
+const expenseSchema = z.object({
+  description: z.string().min(5, "Açıklama en az 5 karakter olmalıdır."),
+  amount: z.coerce.number().positive("Tutar pozitif bir sayı olmalıdır."),
+  category: z.enum(['Kira', 'Fatura', 'Malzeme', 'Maaş', 'Diğer']),
+  date: z.string().optional(),
 });
 
-const categoryColors: { [key in StockAdjustment['category']]: string } = {
-  'Bozulma': "bg-yellow-100 text-yellow-800",
-  'Hırsızlık': "bg-red-100 text-red-800",
-  "Veri Giriş Hatası": "bg-blue-100 text-blue-800",
-  "Hatalı Ürün Alımı": "bg-purple-100 text-purple-800",
-  'İndirim': "bg-green-100 text-green-800",
+const categoryColors: { [key in Expense['category']]: string } = {
+  'Kira': "bg-sky-100 text-sky-800",
+  'Fatura': "bg-amber-100 text-amber-800",
+  "Malzeme": "bg-lime-100 text-lime-800",
+  "Maaş": "bg-violet-100 text-violet-800",
   'Diğer': "bg-gray-100 text-gray-800",
 };
 
-function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+function ExpenseForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const { toast } = useToast();
   const [isCategorizing, setIsCategorizing] = useState(false);
   
-  const form = useForm<z.infer<typeof adjustmentSchema>>({
-    resolver: zodResolver(adjustmentSchema),
+  const form = useForm<z.infer<typeof expenseSchema>>({
+    resolver: zodResolver(expenseSchema),
     defaultValues: {
-      quantity: 0,
       description: "",
     },
   });
@@ -52,12 +49,12 @@ function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const description = form.watch("description");
 
   const handleCategorize = useCallback(async (desc: string) => {
-    if (desc.trim().length < 10) return;
+    if (desc.trim().length < 5) return;
     setIsCategorizing(true);
     try {
-      const result = await categorizeStockAdjustment({ description: desc });
-      if (result.category && adjustmentSchema.shape.category.safeParse(result.category).success) {
-        form.setValue("category", result.category as StockAdjustment['category'], { shouldValidate: true });
+      const result = await categorizeExpense({ description: desc });
+      if (result.category && expenseSchema.shape.category.safeParse(result.category).success) {
+        form.setValue("category", result.category as Expense['category'], { shouldValidate: true });
       }
     } catch (error) {
       toast({
@@ -82,11 +79,11 @@ function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
     };
   }, [description, handleCategorize]);
 
-  function onSubmit(values: z.infer<typeof adjustmentSchema>) {
+  function onSubmit(values: z.infer<typeof expenseSchema>) {
     console.log(values);
     toast({
-      title: "Hareket Gönderildi",
-      description: "Yeni stok hareketi kaydedildi.",
+      title: "Gider Kaydedildi",
+      description: "Yeni gider başarıyla kaydedildi.",
     });
     setOpen(false);
   }
@@ -96,30 +93,12 @@ function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="productId"
+          name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Ürün</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger><SelectValue placeholder="Bir ürün seçin" /></SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="quantity"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Miktar (Adet/Kg)</FormLabel>
+              <FormLabel>Açıklama</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="örn., -5 veya 10" {...field} />
+                <Textarea placeholder="örn., 'Ekim ayı dükkan kirası' veya 'Tedarikçi A ödemesi'" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -127,12 +106,12 @@ function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
         />
         <FormField
           control={form.control}
-          name="description"
+          name="amount"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Neden / Açıklama</FormLabel>
+              <FormLabel>Tutar (₺)</FormLabel>
               <FormControl>
-                <Textarea placeholder="örn., 'Tedarikçi X'ten 2 kasa fazla geldi'" {...field} />
+                <Input type="number" placeholder="örn., 250.50" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -152,7 +131,7 @@ function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
                   <SelectTrigger><SelectValue placeholder="Yapay zeka bir kategori önerecek..." /></SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {adjustmentSchema.shape.category.options.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {expenseSchema.shape.category.options.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -160,42 +139,38 @@ function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
           )}
         />
         <DialogFooter>
-          <Button type="submit">Hareketi Kaydet</Button>
+          <Button type="submit">Gideri Kaydet</Button>
         </DialogFooter>
       </form>
     </Form>
   )
 }
 
-export default function StockAdjustments() {
+export default function Expenses() {
   const [open, setOpen] = useState(false);
-
-  const getProductDetails = (productName: string): Product | undefined => {
-    return products.find(p => p.name === productName);
-  }
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Stok Hareketleri</CardTitle>
-          <CardDescription>Tüm manuel envanter değişikliklerinin kaydı.</CardDescription>
+          <CardTitle>Giderler</CardTitle>
+          <CardDescription>İşletmenizin tüm harcamalarının kaydı.</CardDescription>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Yeni Hareket
+              Yeni Gider
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Yeni Stok Hareketi</DialogTitle>
+              <DialogTitle>Yeni Gider Ekle</DialogTitle>
               <DialogDescription>
-                Ürün envanter seviyelerinde yeni bir değişiklik kaydedin.
+                İşletmenizle ilgili yeni bir harcamayı kaydedin.
               </DialogDescription>
             </DialogHeader>
-            <AdjustmentForm setOpen={setOpen} />
+            <ExpenseForm setOpen={setOpen} />
           </DialogContent>
         </Dialog>
       </CardHeader>
@@ -203,32 +178,25 @@ export default function StockAdjustments() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Ürün</TableHead>
-              <TableHead className="text-center">Miktar</TableHead>
-              <TableHead>Neden</TableHead>
-              <TableHead>Kategori</TableHead>
               <TableHead>Tarih</TableHead>
+              <TableHead>Açıklama</TableHead>
+              <TableHead>Kategori</TableHead>
+              <TableHead className="text-right">Tutar</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {stockAdjustments.map((adj) => {
-              const product = getProductDetails(adj.product);
-              return (
-              <TableRow key={adj.id}>
-                <TableCell className="font-medium flex items-center gap-3">
-                  {product && <ProductIcon type={product.type} />}
-                  <span>{adj.product}</span>
-                </TableCell>
-                <TableCell className={`text-center font-bold font-mono text-lg ${adj.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
-                </TableCell>
-                <TableCell>{adj.reason}</TableCell>
+            {expenses.map((expense) => (
+              <TableRow key={expense.id}>
+                <TableCell>{expense.date}</TableCell>
+                <TableCell className="font-medium">{expense.description}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
+                  <Badge variant="outline" className={`${categoryColors[expense.category]}`}>{expense.category}</Badge>
                 </TableCell>
-                <TableCell>{adj.date}</TableCell>
+                <TableCell className="text-right font-mono text-destructive">
+                  {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(expense.amount)}
+                </TableCell>
               </TableRow>
-            )})}
+            ))}
           </TableBody>
         </Table>
       </CardContent>

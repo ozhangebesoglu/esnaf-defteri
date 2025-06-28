@@ -12,20 +12,24 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Boxes, Users, ShieldAlert, BookUser } from 'lucide-react';
+import { LayoutDashboard, Boxes, Users, ShieldAlert, BookUser, ReceiptText, Package } from 'lucide-react';
 
 import Dashboard from '@/components/dashboard';
 import StockAdjustments from '@/components/stock-adjustments';
 import Customers from '@/components/customers';
 import Monitoring from '@/components/monitoring';
+import Expenses from '@/components/expenses';
+import Products from '@/components/products';
 import { Logo } from '@/components/logo';
 
-type View = 'anasayfa' | 'stok' | 'cari' | 'uyarilar';
+type View = 'anasayfa' | 'stok' | 'cari' | 'giderler' | 'urunler' | 'uyarilar';
 
 const viewTitles: Record<View, string> = {
   anasayfa: 'Anasayfa',
   stok: 'Stok Hareketleri',
   cari: 'Cari Hesaplar',
+  giderler: 'Giderler',
+  urunler: 'Ürünler',
   uyarilar: 'Uyarılar',
 };
 
@@ -40,6 +44,10 @@ export default function Home() {
         return <StockAdjustments />;
       case 'cari':
         return <Customers />;
+      case 'giderler':
+        return <Expenses />;
+      case 'urunler':
+        return <Products />;
       case 'uyarilar':
         return <Monitoring />;
       default:
@@ -80,6 +88,16 @@ export default function Home() {
                 <span>Stok Hareketleri</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('urunler')}
+                isActive={activeView === 'urunler'}
+                tooltip="Ürünler"
+              >
+                <Package />
+                <span>Ürünler</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setActiveView('cari')}
@@ -88,6 +106,16 @@ export default function Home() {
               >
                 <BookUser />
                 <span>Cari Hesaplar</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('giderler')}
+                isActive={activeView === 'giderler'}
+                tooltip="Giderler"
+              >
+                <ReceiptText />
+                <span>Giderler</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

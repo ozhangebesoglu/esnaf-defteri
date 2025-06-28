@@ -1,4 +1,4 @@
-import { Order, Sale, StockAdjustment, Customer, MonitoringAlert, Product } from './types';
+import { Order, Sale, StockAdjustment, Customer, MonitoringAlert, Product, Expense } from './types';
 
 export const salesData: Sale[] = [
   { month: 'Oca', revenue: 4000 },
@@ -42,8 +42,17 @@ export const alerts: MonitoringAlert[] = [
 export const products: Product[] = [
   { id: 'PROD001', name: 'Antrikot', type: 'beef' },
   { id: 'PROD002', name: 'Kıyma', type: 'beef' },
-  { id: 'PROD003', name: 'Kuzu Pirzola', type: 'pork' },
+  { id: 'PROD003', name: 'Kuzu Pirzola', type: 'beef' },
   { id: 'PROD004', name: 'Pastırma', type: 'pork' },
-  { id: 'PROD005', name: 'Tavuk Göğsü', type: 'chicken' },
-  { id: 'PROD006', name: 'Tavuk But', type: 'chicken' },
+  { id: 'PROD005', name: 'Sucuk', type: 'pork' },
+  { id: 'PROD006', name: 'Tavuk Göğsü', type: 'chicken' },
+  { id: 'PROD007', name: 'Tavuk But', type: 'chicken' },
+];
+
+export const expenses: Expense[] = [
+  { id: 'EXP001', date: '2023-11-01', description: 'Kasım ayı dükkan kirası', category: 'Kira', amount: 5000.00 },
+  { id: 'EXP002', date: '2023-10-30', description: 'Elektrik faturası', category: 'Fatura', amount: 450.75 },
+  { id: 'EXP003', date: '2023-10-28', description: 'Ambalaj malzemeleri (poşet, streç film)', category: 'Malzeme', amount: 220.00 },
+  { id: 'EXP004', date: '2023-10-25', description: 'Ali Usta\'nın haftalık ödemesi', category: 'Maaş', amount: 1500.00 },
+  { id: 'EXP005', date: '2023-10-22', description: 'Temizlik malzemeleri', category: 'Diğer', amount: 85.50 },
 ];

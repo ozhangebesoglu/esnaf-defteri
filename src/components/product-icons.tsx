@@ -69,8 +69,8 @@ export const ProductIcon = ({ type, className }: { type: 'beef' | 'pork' | 'chic
   }
 
   return (
-    <div className={cn("flex items-center justify-center w-8 h-8 rounded-full", colors[type])}>
-      <Icon className={cn('w-5 h-5', className)} />
+    <div className={cn("flex items-center justify-center w-10 h-10 rounded-lg", colors[type])}>
+      <Icon className={cn('w-6 h-6', className)} />
     </div>
   )
 }

@@ -40,3 +40,11 @@ export type Product = {
   name: string;
   type: 'beef' | 'pork' | 'chicken';
 };
+
+export type Expense = {
+  id: string;
+  date: string;
+  description: string;
+  category: 'Kira' | 'Fatura' | 'Malzeme' | 'Maaş' | 'Diğer';
+  amount: number;
+};

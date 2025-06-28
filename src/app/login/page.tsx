@@ -48,7 +48,7 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({ title: 'Giriş Başarılı', description: 'Yönlendiriliyorsunuz...' });
-      router.push('/dashboard');
+      router.replace('/');
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -65,7 +65,7 @@ export default function LoginPage() {
     try {
       await createUserWithEmailAndPassword(auth, data.email, data.password);
       toast({ title: 'Kayıt Başarılı', description: 'Hesabınız oluşturuldu. Yönlendiriliyorsunuz...' });
-      router.push('/dashboard');
+      router.replace('/');
     } catch (error: any) {
       toast({
         variant: 'destructive',

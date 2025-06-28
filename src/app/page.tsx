@@ -115,7 +115,7 @@ export default function Home() {
     
     setOrders(prev => [newOrder, ...prev]);
     // Update customer balance
-    setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, balance: c.balance - data.total } : c));
+    setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, balance: c.balance + data.total } : c));
     toast({ title: "Satış Eklendi", description: "Yeni satış kaydı oluşturuldu." });
   };
    const handleAddPayment = (data: { customerId: string, total: number, description: string }) => {
@@ -135,7 +135,7 @@ export default function Home() {
     
     setOrders(prev => [newPayment, ...prev]);
     // Update customer balance
-    setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, balance: c.balance + data.total } : c));
+    setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, balance: c.balance - data.total } : c));
     toast({ title: "Ödeme Alındı", description: `${customer.name} için ödeme kaydedildi.` });
   };
   const handleUpdateSale = (data: Order) => {
@@ -149,7 +149,7 @@ export default function Home() {
     if (!orderToDelete) return;
 
     // Revert customer balance
-    setCustomers(prev => prev.map(c => c.id === orderToDelete.customerId ? { ...c, balance: c.balance + orderToDelete.total } : c));
+    setCustomers(prev => prev.map(c => c.id === orderToDelete.customerId ? { ...c, balance: c.balance - orderToDelete.total } : c));
 
     setOrders(prev => prev.filter(o => o.id !== id));
     toast({ title: "Satış Silindi", description: "Satış kaydı silindi.", variant: "destructive" });
@@ -254,6 +254,10 @@ export default function Home() {
                   stockAdjustments={stockAdjustments}
                   cashboxHistory={cashboxHistory}
                   alerts={alerts}
+                  onAddSale={handleAddSale}
+                  onAddPayment={handleAddPayment}
+                  onAddExpense={handleAddExpense}
+                  onAddStockAdjustment={handleAddStockAdjustment}
                />;
       default:
         return <Dashboard customers={customers} expenses={expenses} salesData={salesData} />;

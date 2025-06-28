@@ -24,6 +24,10 @@ interface AiChatProps {
     stockAdjustments: StockAdjustment[];
     cashboxHistory: CashboxHistory[];
     alerts: MonitoringAlert[];
+    onAddSale: (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items'>) => void;
+    onAddPayment: (data: { customerId: string, total: number, description: string }) => void;
+    onAddExpense: (data: Omit<Expense, 'id' | 'date'>) => void;
+    onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void;
 }
 
 const formSchema = z.object({
@@ -43,11 +47,15 @@ export default function AiChat({
     stockAdjustments,
     cashboxHistory,
     alerts,
+    onAddSale,
+    onAddPayment,
+    onAddExpense,
+    onAddStockAdjustment
 }: AiChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
-      content: 'Merhaba! Ben Esnaf Defteri asistanınızım. İşletmenizle ilgili merak ettiklerinizi sorabilirsiniz. Örneğin, "En borçlu müşteri kim?" veya "Stoku azalan ürünler hangileri?"',
+      content: 'Merhaba! Ben Esnaf Defteri asistanınızım. "Ahmet Yılmaz\'a 250 liralık satış ekle" gibi komutlar verebilir veya "En borçlu müşteri kim?" gibi sorular sorabilirsiniz.',
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,8 +90,25 @@ export default function AiChat({
         appData,
       });
       
-      const modelMessage: Message = { role: 'model', content: response };
+      const modelMessage: Message = { role: 'model', content: response.textResponse };
       setMessages((current) => [...current, modelMessage]);
+
+      if (response.action) {
+        switch (response.action.type) {
+            case 'addSale':
+                onAddSale(response.action.payload);
+                break;
+            case 'addPayment':
+                onAddPayment(response.action.payload);
+                break;
+            case 'addExpense':
+                onAddExpense(response.action.payload);
+                break;
+            case 'addStockAdjustment':
+                onAddStockAdjustment(response.action.payload);
+                break;
+        }
+      }
 
     } catch (error) {
       console.error('AI chat error:', error);
@@ -102,7 +127,7 @@ export default function AiChat({
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Bot /> Yapay Zeka Asistanı</CardTitle>
         <CardDescription>
-          İşletmenizle ilgili sorular sorun, anında yanıt alın.
+          İşletmenizle ilgili sorular sorun veya komutlar verin, anında yanıt alın.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">

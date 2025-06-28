@@ -83,7 +83,7 @@ export async function chatWithAssistant(
 
   const llmResponse = await ai.generate({
     model: ai.model,
-    prompt: messages,
+    messages: messages,
     system: `${systemPrompt}\n\nMevcut Uygulama Verileri (JSON):\n\`\`\`json\n${JSON.stringify(
       appData
     )}\n\`\`\``,

@@ -12,7 +12,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Package, BookUser, ShieldAlert, Banknote, Wallet, AreaChart } from 'lucide-react';
+import { LayoutDashboard, Package, BookUser, ShieldAlert, Banknote, Wallet, AreaChart, Sparkles } from 'lucide-react';
 
 import Dashboard from '@/components/dashboard';
 import Customers from '@/components/customers';
@@ -21,6 +21,7 @@ import Inventory from '@/components/inventory';
 import Financials from '@/components/financials';
 import Cashbox from '@/components/cashbox';
 import Reports from '@/components/reports';
+import AiChat from '@/components/ai-chat';
 import { Logo } from '@/components/logo';
 
 import { 
@@ -36,7 +37,7 @@ import {
 import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 
-type View = 'anasayfa' | 'envanter' | 'finansal' | 'cari' | 'kasa' | 'raporlar' | 'uyarilar';
+type View = 'anasayfa' | 'envanter' | 'finansal' | 'cari' | 'kasa' | 'raporlar' | 'uyarilar' | 'yapay-zeka';
 
 const viewTitles: Record<View, string> = {
   anasayfa: 'Anasayfa',
@@ -46,6 +47,7 @@ const viewTitles: Record<View, string> = {
   kasa: 'Kasa Yönetimi',
   raporlar: 'Raporlar',
   uyarilar: 'Uyarılar',
+  'yapay-zeka': 'Yapay Zeka Asistanı'
 };
 
 // A simple ID generator
@@ -243,6 +245,16 @@ export default function Home() {
         return <Reports customers={customers} expenses={expenses} orders={orders} products={products} />;
       case 'uyarilar':
         return <Monitoring alerts={alerts} />;
+      case 'yapay-zeka':
+        return <AiChat 
+                  customers={customers}
+                  products={products}
+                  orders={orders}
+                  expenses={expenses}
+                  stockAdjustments={stockAdjustments}
+                  cashboxHistory={cashboxHistory}
+                  alerts={alerts}
+               />;
       default:
         return <Dashboard customers={customers} expenses={expenses} salesData={salesData} />;
     }
@@ -329,6 +341,16 @@ export default function Home() {
               >
                 <ShieldAlert />
                 <span>Uyarılar</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('yapay-zeka')}
+                isActive={activeView === 'yapay-zeka'}
+                tooltip="Yapay Zeka"
+              >
+                <Sparkles />
+                <span>Yapay Zeka</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

@@ -1,39 +1,46 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
-import { salesData, recentOrders, customers } from "@/lib/data"
-import type { Order } from "@/lib/types"
-import { DollarSign, ShoppingCart, Users, TrendingUp, TrendingDown } from "lucide-react"
+import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from "recharts"
+import { salesData, expenses, customers } from "@/lib/data"
+import { DollarSign, Users, TrendingUp, TrendingDown } from "lucide-react"
 
-const chartConfig = {
+const barChartConfig = {
   revenue: {
     label: "Ciro",
     color: "hsl(var(--primary))",
   },
 }
 
-export default function Dashboard() {
-  const getStatusVariant = (status: Order['status']) => {
-    switch (status) {
-      case 'Tamamlandı':
-        return 'default'
-      case 'Bekliyor':
-        return 'secondary'
-      case 'İptal Edildi':
-        return 'destructive'
-      default:
-        return 'outline'
-    }
-  }
+const pieChartColors = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+]
 
+export default function Dashboard() {
   const totalReceivables = customers.filter(c => c.balance > 0).reduce((acc, c) => acc + c.balance, 0);
   const totalDebts = customers.filter(c => c.balance < 0).reduce((acc, c) => acc + c.balance, 0);
   const receivablesCount = customers.filter(c => c.balance > 0).length;
   const debtsCount = customers.filter(c => c.balance < 0).length;
+
+  const expenseByCategory = expenses.reduce((acc, expense) => {
+    if (!acc[expense.category]) {
+      acc[expense.category] = 0;
+    }
+    acc[expense.category] += expense.amount;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const expenseChartData = Object.entries(expenseByCategory).map(([name, value]) => ({ name, value }));
+  
+  const pieChartConfig = expenseChartData.reduce((acc, data, index) => {
+    acc[data.name] = { label: data.name, color: pieChartColors[index % pieChartColors.length] };
+    return acc;
+  }, {} as any);
 
 
   return (
@@ -92,7 +99,7 @@ export default function Dashboard() {
             <CardDescription>Son 6 aydaki cironun grafiği.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-64">
+            <ChartContainer config={barChartConfig} className="h-64">
               <BarChart accessibilityLayer data={salesData}>
                 <CartesianGrid vertical={false} />
                 <XAxis
@@ -112,32 +119,20 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Son Siparişler</CardTitle>
-            <CardDescription>En son müşteri siparişlerinin listesi.</CardDescription>
+            <CardTitle>Gider Dağılımı</CardTitle>
+            <CardDescription>Harcamaların kategorilere göre dağılımı.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Sipariş No</TableHead>
-                  <TableHead>Müşteri</TableHead>
-                  <TableHead>Tutar</TableHead>
-                  <TableHead>Durum</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id}</TableCell>
-                    <TableCell>{order.customer}</TableCell>
-                    <TableCell>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total)}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <ChartContainer config={pieChartConfig} className="h-64">
+                <PieChart>
+                    <ChartTooltip content={<ChartTooltipContent nameKey="value" hideLabel />} />
+                    <Pie data={expenseChartData} dataKey="value" nameKey="name" innerRadius={50}>
+                        {expenseChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={pieChartColors[index % pieChartColors.length]} />
+                        ))}
+                    </Pie>
+                </PieChart>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>

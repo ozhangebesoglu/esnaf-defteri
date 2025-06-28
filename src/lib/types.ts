@@ -39,6 +39,8 @@ export type Product = {
   id: string;
   name: string;
   type: 'beef' | 'pork' | 'chicken';
+  stock: number;
+  lowStockThreshold: number;
 };
 
 export type Expense = {

@@ -12,24 +12,22 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Boxes, Users, ShieldAlert, BookUser, ReceiptText, Package } from 'lucide-react';
+import { LayoutDashboard, Package, BookUser, ShieldAlert, Banknote } from 'lucide-react';
 
 import Dashboard from '@/components/dashboard';
-import StockAdjustments from '@/components/stock-adjustments';
 import Customers from '@/components/customers';
 import Monitoring from '@/components/monitoring';
-import Expenses from '@/components/expenses';
-import Products from '@/components/products';
+import Inventory from '@/components/inventory';
+import Financials from '@/components/financials';
 import { Logo } from '@/components/logo';
 
-type View = 'anasayfa' | 'stok' | 'cari' | 'giderler' | 'urunler' | 'uyarilar';
+type View = 'anasayfa' | 'envanter' | 'finansal' | 'cari' | 'uyarilar';
 
 const viewTitles: Record<View, string> = {
   anasayfa: 'Anasayfa',
-  stok: 'Stok Hareketleri',
+  envanter: 'Envanter Yönetimi',
+  finansal: 'Finansal Durum',
   cari: 'Cari Hesaplar',
-  giderler: 'Giderler',
-  urunler: 'Ürünler',
   uyarilar: 'Uyarılar',
 };
 
@@ -40,14 +38,12 @@ export default function Home() {
     switch (activeView) {
       case 'anasayfa':
         return <Dashboard />;
-      case 'stok':
-        return <StockAdjustments />;
+      case 'envanter':
+        return <Inventory />;
+      case 'finansal':
+        return <Financials />;
       case 'cari':
         return <Customers />;
-      case 'giderler':
-        return <Expenses />;
-      case 'urunler':
-        return <Products />;
       case 'uyarilar':
         return <Monitoring />;
       default:
@@ -80,22 +76,22 @@ export default function Home() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('stok')}
-                isActive={activeView === 'stok'}
-                tooltip="Stok"
-              >
-                <Boxes />
-                <span>Stok Hareketleri</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => setActiveView('urunler')}
-                isActive={activeView === 'urunler'}
-                tooltip="Ürünler"
+                onClick={() => setActiveView('envanter')}
+                isActive={activeView === 'envanter'}
+                tooltip="Envanter"
               >
                 <Package />
-                <span>Ürünler</span>
+                <span>Envanter</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('finansal')}
+                isActive={activeView === 'finansal'}
+                tooltip="Finansal"
+              >
+                <Banknote />
+                <span>Finansal</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -106,16 +102,6 @@ export default function Home() {
               >
                 <BookUser />
                 <span>Cari Hesaplar</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => setActiveView('giderler')}
-                isActive={activeView === 'giderler'}
-                tooltip="Giderler"
-              >
-                <ReceiptText />
-                <span>Giderler</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

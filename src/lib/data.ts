@@ -40,13 +40,13 @@ export const alerts: MonitoringAlert[] = [
 ];
 
 export const products: Product[] = [
-  { id: 'PROD001', name: 'Antrikot', type: 'beef' },
-  { id: 'PROD002', name: 'Kıyma', type: 'beef' },
-  { id: 'PROD003', name: 'Kuzu Pirzola', type: 'beef' },
-  { id: 'PROD004', name: 'Pastırma', type: 'pork' },
-  { id: 'PROD005', name: 'Sucuk', type: 'pork' },
-  { id: 'PROD006', name: 'Tavuk Göğsü', type: 'chicken' },
-  { id: 'PROD007', name: 'Tavuk But', type: 'chicken' },
+  { id: 'PROD001', name: 'Antrikot', type: 'beef', stock: 15, lowStockThreshold: 5 },
+  { id: 'PROD002', name: 'Kıyma', type: 'beef', stock: 50, lowStockThreshold: 10 },
+  { id: 'PROD003', name: 'Kuzu Pirzola', type: 'beef', stock: 12, lowStockThreshold: 5 },
+  { id: 'PROD004', name: 'Pastırma', type: 'pork', stock: 25, lowStockThreshold: 8 },
+  { id: 'PROD005', name: 'Sucuk', type: 'pork', stock: 40, lowStockThreshold: 15 },
+  { id: 'PROD006', name: 'Tavuk Göğsü', type: 'chicken', stock: 4, lowStockThreshold: 10 },
+  { id: 'PROD007', name: 'Tavuk But', type: 'chicken', stock: 22, lowStockThreshold: 10 },
 ];
 
 export const expenses: Expense[] = [

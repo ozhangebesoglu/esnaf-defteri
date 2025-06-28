@@ -100,7 +100,7 @@ function AdjustmentForm({ adjustment, setOpen, onSave, products }: {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Ürün</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!adjustment}>
                 <FormControl>
                   <SelectTrigger><SelectValue placeholder="Bir ürün seçin" /></SelectTrigger>
                 </FormControl>
@@ -119,7 +119,7 @@ function AdjustmentForm({ adjustment, setOpen, onSave, products }: {
             <FormItem>
               <FormLabel>Miktar (Adet/Kg)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="Stok artışı için pozitif (örn: 10), azalışı için negatif (örn: -5)" {...field} />
+                <Input type="number" placeholder="Stok artışı için pozitif (örn: 10), azalışı için negatif (örn: -5)" {...field} disabled={!!adjustment} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -271,7 +271,7 @@ export default function StockAdjustments({ stockAdjustments, products, onAddStoc
                   </TableCell>
                   <TableCell>{new Date(adj.date).toLocaleString('tr-TR')}</TableCell>
                   <TableCell className="text-right space-x-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(adj)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(adj)} disabled>
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setAdjustmentToDelete(adj)}>

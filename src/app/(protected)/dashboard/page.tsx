@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs } from "firebase/firestore";
+import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, getDoc } from "firebase/firestore";
 
 import {
   Sidebar,
@@ -38,7 +38,7 @@ import Inventory from '@/components/inventory';
 import Financials from '@/components/financials';
 import Cashbox from '@/components/cashbox';
 import Reports from '@/components/reports';
-import AiChat, { type Message } from '@/components/ai-chat';
+import AiChat from '@/components/ai-chat';
 import { Logo } from '@/components/logo';
 import SalesTransactions from '@/components/sales-transactions';
 import Suppliers from '@/components/suppliers';
@@ -105,12 +105,6 @@ export default function DashboardPage() {
   const [alerts, setAlerts] = useState<MonitoringAlert[]>(initialAlerts);
   const [salesData, setSalesData] = useState<Sale[]>(mockSalesData);
   
-  const [chatHistory, setChatHistory] = useState<Message[]>([
-    {
-      role: 'model',
-      content: 'Merhaba! Ben Esnaf Defteri asistanınızım. "Ahmet Yılmaz\'a 250 liralık satış ekle" gibi komutlar verebilir veya "En borçlu müşteri kim?" gibi sorular sorabilirsiniz.',
-    },
-  ]);
 
   // --- Firestore Data Fetching ---
   useEffect(() => {
@@ -292,18 +286,22 @@ export default function DashboardPage() {
     toast({ title: "Satış Güncellendi", description: `${data.id} numaralı satış güncellendi.` });
   };
   const handleDeleteSale = async (id: string) => {
-    const orderToDelete = orders.find(o => o.id === id);
-    if (!orderToDelete || !user) return;
+    const orderToDeleteRef = doc(db, 'orders', id);
+    const orderToDeleteSnap = await getDoc(orderToDeleteRef);
+
+    if (!orderToDeleteSnap.exists() || !user) return;
+    
+    const orderToDelete = orderToDeleteSnap.data() as Order;
     
     const batch = writeBatch(db);
     
-    const orderRef = doc(db, 'orders', id);
-    batch.delete(orderRef);
+    batch.delete(orderToDeleteRef);
 
     if(orderToDelete.customerId !== 'CASH_SALE') {
-        const customer = customers.find(c => c.id === orderToDelete.customerId);
-        if (customer) {
-            const customerRef = doc(db, "customers", customer.id);
+        const customerRef = doc(db, "customers", orderToDelete.customerId);
+        const customerSnap = await getDoc(customerRef);
+        if (customerSnap.exists()) {
+            const customer = customerSnap.data() as Customer;
             batch.update(customerRef, { balance: customer.balance - orderToDelete.total });
         }
     }
@@ -377,13 +375,14 @@ export default function DashboardPage() {
     toast({ title: "Stok Hareketi Güncellendi" });
   };
   const handleDeleteStockAdjustment = async (id: string) => {
-    const adjToDelete = stockAdjustments.find(a => a.id === id);
-    if(!adjToDelete || !user) return;
+    const adjToDeleteRef = doc(db, 'stockAdjustments', id);
+    const adjToDeleteSnap = await getDoc(adjToDeleteRef);
+    if(!adjToDeleteSnap.exists() || !user) return;
     
-    const batch = writeBatch(db);
+    const adjToDelete = adjToDeleteSnap.data() as StockAdjustment;
 
-    const adjRef = doc(db, 'stockAdjustments', id);
-    batch.delete(adjRef);
+    const batch = writeBatch(db);
+    batch.delete(adjToDeleteRef);
 
     const product = products.find(p => p.id === adjToDelete.productId);
     if(product) {
@@ -534,28 +533,7 @@ export default function DashboardPage() {
       case 'uyarilar':
         return <Monitoring alerts={alerts} />;
       case 'yapay-zeka':
-        return <AiChat 
-                  customers={customers}
-                  products={products}
-                  orders={orders}
-                  expenses={expenses}
-                  stockAdjustments={stockAdjustments}
-                  cashboxHistory={cashboxHistory}
-                  alerts={alerts}
-                  chatHistory={chatHistory}
-                  setChatHistory={setChatHistory}
-                  onAddSale={handleAddSale}
-                  onAddPayment={handleAddPayment}
-                  onAddExpense={handleAddExpense}
-                  onAddStockAdjustment={handleAddStockAdjustment}
-                  onAddCustomer={handleAddCustomer}
-                  onAddCashSale={handleAddCashSale}
-                  onDeleteCustomer={handleDeleteCustomer}
-                  onDeleteProduct={handleDeleteProduct}
-                  onDeleteSale={handleDeleteSale}
-                  onDeleteExpense={handleDeleteExpense}
-                  onDeleteStockAdjustment={handleDeleteStockAdjustment}
-               />;
+        return <AiChat />;
       default:
         return <Dashboard customers={customers} expenses={expenses} salesData={salesData} />;
     }

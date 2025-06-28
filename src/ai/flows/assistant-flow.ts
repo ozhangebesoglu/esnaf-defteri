@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A conversational AI assistant for the Esnaf Defteri app that can understand and execute commands.
+ * @fileOverview A conversational AI assistant for the Esnaf Defteri app that can understand and execute commands by calling tools that interact with the database.
  *
  * - chatWithAssistant - A function that handles the conversation and tool execution.
  * - ChatWithAssistantInput - The input type for the chatWithAssistant function.
@@ -22,58 +22,38 @@ import {
   deleteExpenseTool,
   deleteStockAdjustmentTool,
 } from '@/ai/tools/esnaf-tools';
-import type {Customer, Product, Order, Expense, StockAdjustment} from '@/lib/types';
 
-// Helper to find a resource by name
-const findByName = <T extends {name: string}>(
-  name: string,
-  items: T[]
-): T | undefined => {
-  const lowerCaseName = name.toLowerCase();
-  return items.find(i => i.name.toLowerCase() === lowerCaseName);
-};
+const allTools = [
+    addSaleTool,
+    addPaymentTool,
+    addExpenseTool,
+    addStockAdjustmentTool,
+    addCustomerTool,
+    addCashSaleTool,
+    deleteCustomerTool,
+    deleteProductTool,
+    deleteSaleTool,
+    deleteExpenseTool,
+    deleteStockAdjustmentTool,
+];
 
 const ChatWithAssistantInputSchema = z.object({
   chatHistory: z
     .array(
       z.object({
-        role: z.enum(['user', 'model']),
-        content: z.string(),
+        role: z.enum(['user', 'model', 'tool']),
+        content: z.any(),
       })
     )
     .describe('The history of the conversation so far, including the latest user message.'),
-  appData: z
-    .any()
-    .describe(
-      'A JSON object containing the current state of the application data (customers, products, orders, etc.).'
-    ),
+   userId: z.string().describe("The user's Firebase UID.")
 });
 export type ChatWithAssistantInput = z.infer<typeof ChatWithAssistantInputSchema>;
-
-const ChatActionSchema = z
-  .object({
-    type: z.enum([
-      'addSale',
-      'addPayment',
-      'addExpense',
-      'addStockAdjustment',
-      'addCustomer',
-      'addCashSale',
-      'deleteCustomer',
-      'deleteProduct',
-      'deleteSale',
-      'deleteExpense',
-      'deleteStockAdjustment',
-    ]),
-    payload: z.any(),
-  })
-  .optional();
 
 const ChatWithAssistantOutputSchema = z.object({
   textResponse: z
     .string()
     .describe("The AI's textual response to the user."),
-  action: ChatActionSchema,
 });
 export type ChatWithAssistantOutput = z.infer<
   typeof ChatWithAssistantOutputSchema
@@ -83,245 +63,64 @@ const systemPrompt = `Sen, bir kasap dükkanı için geliştirilmiş "Esnaf Deft
 Kullanıcı bir işlem yapmak istediğinde (örneğin, "Ahmet Yılmaz'a 500 liralık satış ekle", "Ayşe Kaya'dan 100 lira ödeme aldım", "Yeni müşteri ekle: Adı Canan Güneş"), uygun aracı kullan.
 Eğer bir müşteri veya ürün adı belirsizse ya da bulunamazsa, kibarca kullanıcıdan ismi kontrol etmesini veya yeni bir kayıt eklemek isteyip istemediğini sor.
 "addSale" aracını sadece veresiye (borç) satışlar için kullanmalısın. Peşin satışlar için "addCashSale" aracını kullan.
-Kullanıcı senden sadece bilgi istiyorsa (örneğin, "Ahmet'in ne kadar borcu var?"), araçları kullanmadan, sağlanan JSON verilerine göre cevap ver.
-İşlem başarılı olduğunda kullanıcıyı mutlaka bilgilendir.
-
-Mevcut Uygulama Verileri (JSON):
-\`\`\`json
-{{{json appData}}}
-\`\`\``;
+Kullanıcı senden bilgi istiyorsa (örneğin, "Ahmet'in ne kadar borcu var?"), şu an için bu bilgiye erişimin olmadığını, ancak gelecekte bu özelliğin ekleneceğini belirt.
+İşlem başarılı olduğunda veya bir hata oluştuğunda, aracın döndürdüğü mesajı temel alarak kullanıcıyı mutlaka bilgilendir.
+Unutma, her araç 'userId' parametresine ihtiyaç duyar, bu bilgiyi her zaman sağla.`;
 
 export async function chatWithAssistant(
   input: ChatWithAssistantInput
 ): Promise<ChatWithAssistantOutput> {
-  const {chatHistory, appData} = input;
+  const {chatHistory, userId} = input;
 
   // The Gemini API requires the conversation history to start with a 'user' role.
-  // We filter out the initial welcome message from the model if it exists.
   const validChatHistory =
     chatHistory.length > 0 && chatHistory[0].role === 'model'
       ? chatHistory.slice(1)
       : chatHistory;
+      
+  const messages = validChatHistory.map(m => {
+    if (m.role === 'user' || m.role === 'model') {
+        return { role: m.role, content: [{ text: m.content as string }] };
+    }
+    // Handle tool role if needed, though for this simple flow, we might not pass it back
+    return m;
+  }) as any;
 
-  const messages = validChatHistory.map(m => ({
-      role: m.role,
-      content: [{text: m.content}],
-    }));
 
   const llmResponse = await ai.generate({
     model: ai.model,
     messages: messages,
     system: systemPrompt,
-    customData: {
-      appData: JSON.stringify(appData),
-    },
-    tools: [
-      addSaleTool,
-      addPaymentTool,
-      addExpenseTool,
-      addStockAdjustmentTool,
-      addCustomerTool,
-      addCashSaleTool,
-      deleteCustomerTool,
-      deleteProductTool,
-      deleteSaleTool,
-      deleteExpenseTool,
-      deleteStockAdjustmentTool,
-    ],
+    tools: allTools,
   });
 
-  const toolCalls = llmResponse.toolRequest?.calls;
+  const toolRequest = llmResponse.toolRequest;
 
-  if (toolCalls && toolCalls.length > 0) {
-    const toolCall = toolCalls[0]; // Assuming one tool call at a time for simplicity
-    const toolInput = toolCall.input;
-    let action: z.infer<typeof ChatActionSchema>;
-    let textResponse = llmResponse.text;
+  if (toolRequest) {
+    // The model wants to call a tool.
+    const toolCall = toolRequest.calls[0]; // Assuming one tool call for simplicity
+    const tool = allTools.find(t => t.name === toolCall.name);
 
-    switch (toolCall.name) {
-      case 'addSale':
-        const customerForSale = findByName(
-          toolInput.customerName,
-          appData.customers as Customer[]
-        );
-        if (customerForSale) {
-          action = {
-            type: 'addSale',
-            payload: {
-              customerId: customerForSale.id,
-              description: toolInput.description,
-              total: toolInput.total,
-            },
-          };
-          if (!textResponse) {
-            textResponse = `${customerForSale.name} için ${toolInput.total} TL tutarında satış eklendi.`;
-          }
-        } else {
-          textResponse = `"${toolInput.customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin veya bu isimde yeni bir müşteri eklemek isterseniz belirtin.`;
-        }
-        break;
-
-      case 'addCashSale':
-        action = {
-          type: 'addCashSale',
-          payload: toolInput,
-        };
-        if (!textResponse) {
-          textResponse = `${toolInput.total} TL tutarında peşin satış başarıyla eklendi.`;
-        }
-        break;
-
-      case 'addPayment':
-        const customerForPayment = findByName(
-          toolInput.customerName,
-          appData.customers as Customer[]
-        );
-        if (customerForPayment) {
-          action = {
-            type: 'addPayment',
-            payload: {
-              customerId: customerForPayment.id,
-              description: toolInput.description || 'Nakit Ödeme',
-              total: toolInput.total,
-            },
-          };
-          if (!textResponse) {
-            textResponse = `${customerForPayment.name} adlı müşteriden ${toolInput.total} TL ödeme alındı.`;
-          }
-        } else {
-          textResponse = `"${toolInput.customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin.`;
-        }
-        break;
-
-      case 'addExpense':
-        action = {type: 'addExpense', payload: toolInput};
-        if (!textResponse) {
-          textResponse = `"${toolInput.description}" açıklamasıyla ${toolInput.amount} TL tutarında yeni bir gider eklendi.`;
-        }
-        break;
-
-      case 'addStockAdjustment':
-        const productForAdjustment = findByName(
-          toolInput.productName,
-          appData.products as Product[]
-        );
-        if (productForAdjustment) {
-          action = {
-            type: 'addStockAdjustment',
-            payload: {
-              productId: productForAdjustment.id,
-              quantity: toolInput.quantity,
-              description: toolInput.description,
-              category: toolInput.category,
-            },
-          };
-          if (!textResponse) {
-            textResponse = `${productForAdjustment.name} ürünü için stok hareketi eklendi.`;
-          }
-        } else {
-          textResponse = `"${toolInput.productName}" adında bir ürün bulamadım. Lütfen ürün listesini kontrol edin.`;
-        }
-        break;
-
-      case 'addCustomer':
-        action = {
-          type: 'addCustomer',
-          payload: {
-            name: toolInput.customerName,
-            email: toolInput.email,
-            initialDebt: toolInput.initialDebt
-          },
-        };
-        if (!textResponse) {
-          textResponse = `${toolInput.customerName} adlı yeni müşteri eklendi.`;
-          if (toolInput.initialDebt) {
-            textResponse += ` ${toolInput.initialDebt} TL borç ile.`
-          }
-        }
-        break;
+    if (tool) {
+      // Inject the userId into the tool's input
+      const toolInputWithUser = { ...toolCall.input, userId };
       
-      case 'deleteCustomer':
-        const customerToDelete = findByName(
-          toolInput.customerName,
-          appData.customers as Customer[]
-        );
-        if (customerToDelete) {
-          action = {
-            type: 'deleteCustomer',
-            payload: customerToDelete.id,
-          };
-          if (!textResponse) {
-            textResponse = `${customerToDelete.name} adlı müşteri silindi.`;
-          }
-        } else {
-          textResponse = `"${toolInput.customerName}" adında bir müşteri bulamadım.`;
-        }
-        break;
-
-      case 'deleteProduct':
-        const productToDelete = findByName(
-          toolInput.productName,
-          appData.products as Product[]
-        );
-        if (productToDelete) {
-          action = {
-            type: 'deleteProduct',
-            payload: productToDelete.id,
-          };
-          if (!textResponse) {
-            textResponse = `${productToDelete.name} adlı ürün silindi.`;
-          }
-        } else {
-          textResponse = `"${toolInput.productName}" adında bir ürün bulamadım.`;
-        }
-        break;
-
-      case 'deleteSale':
-        const saleToDelete = (appData.orders as Order[]).find(o => o.id === toolInput.saleId);
-        if (saleToDelete) {
-            action = { type: 'deleteSale', payload: toolInput.saleId };
-             if (!textResponse) {
-                textResponse = `${toolInput.saleId} numaralı işlem silindi.`;
-             }
-        } else {
-            textResponse = `"${toolInput.saleId}" numaralı bir satış veya ödeme bulamadım.`;
-        }
-        break;
-
-      case 'deleteExpense':
-         const expenseToDelete = (appData.expenses as Expense[]).find(e => e.id === toolInput.expenseId);
-        if (expenseToDelete) {
-            action = { type: 'deleteExpense', payload: toolInput.expenseId };
-            if (!textResponse) {
-                textResponse = `${toolInput.expenseId} numaralı gider silindi.`;
-            }
-        } else {
-            textResponse = `"${toolInput.expenseId}" numaralı bir gider bulamadım.`;
-        }
-        break;
-
-      case 'deleteStockAdjustment':
-         const adjToDelete = (appData.stockAdjustments as StockAdjustment[]).find(a => a.id === toolInput.adjustmentId);
-        if (adjToDelete) {
-            action = { type: 'deleteStockAdjustment', payload: toolInput.adjustmentId };
-             if (!textResponse) {
-                textResponse = `${toolInput.adjustmentId} numaralı stok hareketi silindi.`;
-             }
-        } else {
-            textResponse = `"${toolInput.adjustmentId}" numaralı bir stok hareketi bulamadım.`;
-        }
-        break;
+      // Execute the tool. The tool itself now contains all logic and returns a user-facing string.
+      const toolResult = await tool.fn(toolInputWithUser);
+      
+      // For this simplified flow, we will return the tool's result directly to the user
+      // instead of re-prompting the LLM with the tool's output.
+      // This is efficient and sufficient for action-oriented tools.
+      return {
+        textResponse: toolResult,
+      };
+    } else {
+        return { textResponse: `İstenen araç bulunamadı: ${toolCall.name}` };
     }
-
-    return {
-      textResponse: textResponse,
-      action: action,
-    };
   }
 
   // If no tool was called, just return the text response
   return {
     textResponse: llmResponse.text,
-    action: undefined,
   };
 }

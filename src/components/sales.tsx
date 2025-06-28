@@ -78,7 +78,7 @@ export default function Sales({ orders, customers, onAddSale, onUpdateSale, onDe
           <AlertDialogHeader>
             <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
             <AlertDialogDescription>
-              Bu işlem geri alınamaz. #{saleToDelete?.id} numaralı satış kaydı kalıcı olarak silinecektir. Bu işlem ilgili müşterinin bakiyesini de güncelleyecektir.
+              Bu işlem geri alınamaz. #{saleToDelete?.id} numaralı işlem kaydı kalıcı olarak silinecektir. Bu işlem ilgili müşterinin bakiyesini de güncelleyecektir.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -91,21 +91,21 @@ export default function Sales({ orders, customers, onAddSale, onUpdateSale, onDe
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Satışlar</CardTitle>
-          <CardDescription>İşletmenizin tüm satış işlemlerinin kaydı. Detay için bir satışa tıklayın.</CardDescription>
+          <CardTitle>Veresiye İşlemleri</CardTitle>
+          <CardDescription>Müşterilerin borç ve ödeme kayıtları. Detay için bir işleme tıklayın.</CardDescription>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(isOpen) => { if(!isOpen) setSelectedSaleForEdit(undefined); setDialogOpen(isOpen);}}>
           <DialogTrigger asChild>
             <Button onClick={() => handleOpenDialog()}>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Yeni Satış
+              Yeni Veresiye Satış
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>{selectedSaleForEdit ? 'Satışı Düzenle' : 'Yeni Satış Ekle'}</DialogTitle>
+              <DialogTitle>{selectedSaleForEdit ? 'İşlemi Düzenle' : 'Yeni Veresiye Satış'}</DialogTitle>
               <DialogDescription>
-                 {selectedSaleForEdit ? `${selectedSaleForEdit.id} numaralı satışı düzenleyin.` : 'Yeni bir satış işlemi oluşturun. Bu işlem müşterinin cari hesabına da işlenecektir.'}
+                 {selectedSaleForEdit ? `${selectedSaleForEdit.id} numaralı işlemi düzenleyin.` : 'Yeni bir satış/borç işlemi oluşturun. Bu işlem müşterinin cari hesabına da işlenecektir.'}
               </DialogDescription>
             </DialogHeader>
             <SaleForm sale={selectedSaleForEdit} setOpen={setDialogOpen} onSave={handleSave} customers={customers} />
@@ -116,11 +116,11 @@ export default function Sales({ orders, customers, onAddSale, onUpdateSale, onDe
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Sipariş No</TableHead>
+              <TableHead>İşlem No</TableHead>
               <TableHead>Tarih</TableHead>
               <TableHead>Müşteri</TableHead>
+              <TableHead>Açıklama</TableHead>
               <TableHead className="text-right">Tutar</TableHead>
-              <TableHead className="text-center">Durum</TableHead>
               <TableHead className="w-[100px] text-right">İşlemler</TableHead>
             </TableRow>
           </TableHeader>
@@ -130,11 +130,9 @@ export default function Sales({ orders, customers, onAddSale, onUpdateSale, onDe
                 <TableCell className="font-medium">{order.id}</TableCell>
                 <TableCell>{new Date(order.date).toLocaleString('tr-TR')}</TableCell>
                 <TableCell>{order.customerName}</TableCell>
-                <TableCell className={`text-right font-mono ${order.total < 0 ? 'text-green-600' : ''}`}>
+                <TableCell className="truncate max-w-xs">{order.description}</TableCell>
+                <TableCell className={`text-right font-mono ${order.total < 0 ? 'text-green-600' : 'text-destructive'}`}>
                   {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total)}
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
                 </TableCell>
                  <TableCell className="text-right space-x-1">
                   <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleOpenDialog(order)}}>
@@ -147,7 +145,7 @@ export default function Sales({ orders, customers, onAddSale, onUpdateSale, onDe
               </TableRow>
             )) : (
                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">Kayıtlı satış bulunamadı.</TableCell>
+                    <TableCell colSpan={6} className="h-24 text-center">Kayıtlı veresiye işlemi bulunamadı.</TableCell>
                 </TableRow>
             )}
           </TableBody>

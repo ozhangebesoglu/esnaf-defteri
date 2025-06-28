@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, Pencil } from "lucide-react";
 import { categorizeExpense } from "@/ai/flows/categorize-expense-flow";
 import { useToast } from "@/hooks/use-toast";
 
@@ -35,13 +35,13 @@ const categoryColors: { [key in Expense['category']]: string } = {
   'Diğer': "bg-gray-100 text-gray-800",
 };
 
-function ExpenseForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+function ExpenseForm({ expense, setOpen }: { expense?: Expense, setOpen: (open: boolean) => void }) {
   const { toast } = useToast();
   const [isCategorizing, setIsCategorizing] = useState(false);
   
   const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: {
+    defaultValues: expense || {
       description: "",
     },
   });
@@ -68,6 +68,8 @@ function ExpenseForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   }, [form, toast]);
 
   useEffect(() => {
+    if (expense) return; // Don't auto-categorize on edit.
+    
     const handler = setTimeout(() => {
       if (description) {
         handleCategorize(description);
@@ -77,13 +79,13 @@ function ExpenseForm({ setOpen }: { setOpen: (open: boolean) => void }) {
     return () => {
       clearTimeout(handler);
     };
-  }, [description, handleCategorize]);
+  }, [description, handleCategorize, expense]);
 
   function onSubmit(values: z.infer<typeof expenseSchema>) {
     console.log(values);
     toast({
-      title: "Gider Kaydedildi",
-      description: "Yeni gider başarıyla kaydedildi.",
+      title: `Gider ${expense ? 'Güncellendi' : 'Kaydedildi'}`,
+      description: "Gider bilgileri başarıyla kaydedildi.",
     });
     setOpen(false);
   }
@@ -111,7 +113,7 @@ function ExpenseForm({ setOpen }: { setOpen: (open: boolean) => void }) {
             <FormItem>
               <FormLabel>Tutar (₺)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="örn., 250.50" {...field} />
+                <Input type="number" step="0.01" placeholder="örn., 250.50" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -148,6 +150,12 @@ function ExpenseForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 
 export default function Expenses() {
   const [open, setOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | undefined>(undefined);
+
+  const handleOpenDialog = (expense?: Expense) => {
+    setSelectedExpense(expense);
+    setOpen(true);
+  };
 
   return (
     <Card>
@@ -156,21 +164,21 @@ export default function Expenses() {
           <CardTitle>Giderler</CardTitle>
           <CardDescription>İşletmenizin tüm harcamalarının kaydı.</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(isOpen) => { if(!isOpen) setSelectedExpense(undefined); setOpen(isOpen);}}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => handleOpenDialog()}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Yeni Gider
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Yeni Gider Ekle</DialogTitle>
+              <DialogTitle>{selectedExpense ? 'Gideri Düzenle' : 'Yeni Gider Ekle'}</DialogTitle>
               <DialogDescription>
-                İşletmenizle ilgili yeni bir harcamayı kaydedin.
+                {selectedExpense ? 'Mevcut giderin bilgilerini güncelleyin.' : 'İşletmenizle ilgili yeni bir harcamayı kaydedin.'}
               </DialogDescription>
             </DialogHeader>
-            <ExpenseForm setOpen={setOpen} />
+            <ExpenseForm expense={selectedExpense} setOpen={setOpen} />
           </DialogContent>
         </Dialog>
       </CardHeader>
@@ -182,6 +190,7 @@ export default function Expenses() {
               <TableHead>Açıklama</TableHead>
               <TableHead>Kategori</TableHead>
               <TableHead className="text-right">Tutar</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -194,6 +203,11 @@ export default function Expenses() {
                 </TableCell>
                 <TableCell className="text-right font-mono text-destructive">
                   {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(expense.amount)}
+                </TableCell>
+                 <TableCell>
+                  <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(expense)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}

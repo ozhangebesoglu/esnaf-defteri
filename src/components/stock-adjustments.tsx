@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, Pencil } from "lucide-react";
 import { categorizeStockAdjustment } from "@/ai/flows/categorize-stock-adjustment";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,13 +37,13 @@ const categoryColors: { [key in StockAdjustment['category']]: string } = {
   'Diğer': "bg-gray-100 text-gray-800",
 };
 
-function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+function AdjustmentForm({ adjustment, setOpen }: { adjustment?: StockAdjustment, setOpen: (open: boolean) => void }) {
   const { toast } = useToast();
   const [isCategorizing, setIsCategorizing] = useState(false);
   
   const form = useForm<z.infer<typeof adjustmentSchema>>({
     resolver: zodResolver(adjustmentSchema),
-    defaultValues: {
+    defaultValues: adjustment || {
       quantity: 0,
       description: "",
     },
@@ -71,6 +71,8 @@ function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   }, [form, toast]);
 
   useEffect(() => {
+    if (adjustment) return; // Don't auto-categorize on edit
+
     const handler = setTimeout(() => {
       if (description) {
         handleCategorize(description);
@@ -80,13 +82,13 @@ function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
     return () => {
       clearTimeout(handler);
     };
-  }, [description, handleCategorize]);
+  }, [description, handleCategorize, adjustment]);
 
   function onSubmit(values: z.infer<typeof adjustmentSchema>) {
     console.log(values);
     toast({
-      title: "Hareket Gönderildi",
-      description: "Yeni stok hareketi kaydedildi.",
+      title: `Hareket ${adjustment ? 'Güncellendi' : 'Gönderildi'}`,
+      description: "Stok hareketi başarıyla kaydedildi.",
     });
     setOpen(false);
   }
@@ -169,11 +171,13 @@ function AdjustmentForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 
 export default function StockAdjustments() {
   const [open, setOpen] = useState(false);
+  const [selectedAdjustment, setSelectedAdjustment] = useState<StockAdjustment | undefined>(undefined);
 
-  const getProductDetails = (productName: string): Product | undefined => {
-    return products.find(p => p.name === productName);
-  }
-
+  const handleOpenDialog = (adjustment?: StockAdjustment) => {
+    setSelectedAdjustment(adjustment);
+    setOpen(true);
+  };
+  
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -181,21 +185,21 @@ export default function StockAdjustments() {
           <CardTitle>Stok Hareketleri</CardTitle>
           <CardDescription>Tüm manuel envanter değişikliklerinin kaydı.</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(isOpen) => { if(!isOpen) setSelectedAdjustment(undefined); setOpen(isOpen);}}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => handleOpenDialog()}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Yeni Hareket
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Yeni Stok Hareketi</DialogTitle>
+              <DialogTitle>{selectedAdjustment ? 'Hareketi Düzenle' : 'Yeni Stok Hareketi'}</DialogTitle>
               <DialogDescription>
-                Ürün envanter seviyelerinde yeni bir değişiklik kaydedin.
+                {selectedAdjustment ? 'Mevcut stok hareketini düzenleyin.' : 'Ürün envanter seviyelerinde yeni bir değişiklik kaydedin.'}
               </DialogDescription>
             </DialogHeader>
-            <AdjustmentForm setOpen={setOpen} />
+            <AdjustmentForm adjustment={selectedAdjustment} setOpen={setOpen} />
           </DialogContent>
         </Dialog>
       </CardHeader>
@@ -205,28 +209,34 @@ export default function StockAdjustments() {
             <TableRow>
               <TableHead>Ürün</TableHead>
               <TableHead className="text-center">Miktar</TableHead>
-              <TableHead>Neden</TableHead>
+              <TableHead>Açıklama</TableHead>
               <TableHead>Kategori</TableHead>
               <TableHead>Tarih</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {stockAdjustments.map((adj) => {
-              const product = getProductDetails(adj.product);
+              const product = products.find(p => p.id === adj.productId);
               return (
               <TableRow key={adj.id}>
                 <TableCell className="font-medium flex items-center gap-3">
                   {product && <ProductIcon type={product.type} />}
-                  <span>{adj.product}</span>
+                  <span>{adj.productName}</span>
                 </TableCell>
                 <TableCell className={`text-center font-bold font-mono text-lg ${adj.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
                 </TableCell>
-                <TableCell>{adj.reason}</TableCell>
+                <TableCell>{adj.description}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
                 </TableCell>
                 <TableCell>{adj.date}</TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(adj)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             )})}
           </TableBody>

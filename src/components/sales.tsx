@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
-import { PlusCircle } from "lucide-react"
+import { PlusCircle, Pencil } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -25,18 +25,18 @@ const saleSchema = z.object({
   total: z.coerce.number().positive("Tutar pozitif bir sayı olmalıdır."),
 })
 
-function SaleForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+function SaleForm({ sale, setOpen }: { sale?: Order, setOpen: (open: boolean) => void }) {
   const { toast } = useToast()
   const form = useForm<z.infer<typeof saleSchema>>({
     resolver: zodResolver(saleSchema),
-    defaultValues: { description: "" },
+    defaultValues: sale || { description: "" },
   })
 
   function onSubmit(values: z.infer<typeof saleSchema>) {
     console.log(values)
     toast({
-      title: "Satış Eklendi",
-      description: "Yeni satış işlemi başarıyla kaydedildi.",
+      title: `Satış ${sale ? 'Güncellendi' : 'Eklendi'}`,
+      description: "Satış işlemi başarıyla kaydedildi.",
     })
     setOpen(false)
   }
@@ -82,7 +82,7 @@ function SaleForm({ setOpen }: { setOpen: (open: boolean) => void }) {
             <FormItem>
               <FormLabel>Toplam Tutar (₺)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="örn., 350.75" {...field} />
+                <Input type="number" step="0.01" placeholder="örn., 350.75" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -98,6 +98,12 @@ function SaleForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 
 export default function Sales() {
   const [open, setOpen] = useState(false)
+  const [selectedSale, setSelectedSale] = useState<Order | undefined>(undefined);
+
+  const handleOpenDialog = (sale?: Order) => {
+    setSelectedSale(sale);
+    setOpen(true);
+  };
 
   const getStatusVariant = (status: Order['status']) => {
     switch (status) {
@@ -115,21 +121,21 @@ export default function Sales() {
           <CardTitle>Satışlar</CardTitle>
           <CardDescription>İşletmenizin tüm satış işlemlerinin kaydı.</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(isOpen) => { if(!isOpen) setSelectedSale(undefined); setOpen(isOpen);}}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => handleOpenDialog()}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Yeni Satış
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Yeni Satış Ekle</DialogTitle>
+              <DialogTitle>{selectedSale ? 'Satışı Düzenle' : 'Yeni Satış Ekle'}</DialogTitle>
               <DialogDescription>
-                Yeni bir satış işlemi oluşturun. Bu işlem müşterinin cari hesabına da işlenecektir.
+                 {selectedSale ? `${selectedSale.id} numaralı satışı düzenleyin.` : 'Yeni bir satış işlemi oluşturun. Bu işlem müşterinin cari hesabına da işlenecektir.'}
               </DialogDescription>
             </DialogHeader>
-            <SaleForm setOpen={setOpen} />
+            <SaleForm sale={selectedSale} setOpen={setOpen} />
           </DialogContent>
         </Dialog>
       </CardHeader>
@@ -140,19 +146,25 @@ export default function Sales() {
               <TableHead>Sipariş No</TableHead>
               <TableHead>Müşteri</TableHead>
               <TableHead className="text-right">Tutar</TableHead>
-              <TableHead className="text-right">Durum</TableHead>
+              <TableHead className="text-center">Durum</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {recentOrders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="font-medium">{order.id}</TableCell>
-                <TableCell>{order.customer}</TableCell>
+                <TableCell>{order.customerName}</TableCell>
                 <TableCell className="text-right font-mono">
                   {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total)}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-center">
                   <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
+                </TableCell>
+                 <TableCell>
+                  <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(order)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}

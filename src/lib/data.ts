@@ -9,21 +9,6 @@ export const salesData: Sale[] = [
   { month: 'Haz', revenue: 5500 },
 ];
 
-export const recentOrders: Order[] = [
-  { id: 'ORD001', customer: 'Ahmet Yılmaz', items: 3, total: 125.50, status: 'Tamamlandı' },
-  { id: 'ORD002', customer: 'Ayşe Kaya', items: 1, total: 45.00, status: 'Bekliyor' },
-  { id: 'ORD003', customer: 'Mehmet Demir', items: 5, total: 210.25, status: 'Tamamlandı' },
-  { id: 'ORD004', customer: 'Fatma Şahin', items: 2, total: 88.75, status: 'İptal Edildi' },
-  { id: 'ORD005', customer: 'Mustafa Arslan', items: 4, total: 150.00, status: 'Tamamlandı' },
-];
-
-export const stockAdjustments: StockAdjustment[] = [
-  { id: 'ADJ001', product: 'Antrikot', quantity: -2, reason: 'Son kullanma tarihi geçti', category: 'Bozulma', date: '2023-10-26' },
-  { id: 'ADJ002', product: 'Kıyma', quantity: -5, reason: 'İlk sayımda yazım hatası', category: 'Veri Giriş Hatası', date: '2023-10-25' },
-  { id: 'ADJ003', product: 'Tavuk Göğsü', quantity: 10, reason: 'Tedarikçiden fazla geldi', category: 'Hatalı Ürün Alımı', date: '2023-10-24' },
-  { id: 'ADJ004', product: 'Kuzu Pirzola', quantity: -1, reason: 'Ambalaj hasarlı', category: 'Bozulma', date: '2023-10-23' },
-];
-
 export const customers: Customer[] = [
   { id: 'CUS001', name: 'Ahmet Yılmaz', email: 'ahmet.y@example.com', balance: 150.00 },
   { id: 'CUS002', name: 'Ayşe Kaya', email: 'ayse.k@example.com', balance: -75.50 },
@@ -33,6 +18,21 @@ export const customers: Customer[] = [
   { id: 'CUS006', name: 'Zeynep Aydın', email: 'zeynep.a@example.com', balance: 35.75 },
 ];
 
+export const recentOrders: Order[] = [
+  { id: 'ORD001', customerId: 'CUS001', customerName: 'Ahmet Yılmaz', description: '1kg kıyma, 0.5kg kuşbaşı', items: 3, total: 125.50, status: 'Tamamlandı' },
+  { id: 'ORD002', customerId: 'CUS002', customerName: 'Ayşe Kaya', description: '2 adet kasap sucuk', items: 1, total: 45.00, status: 'Bekliyor' },
+  { id: 'ORD003', customerId: 'CUS003', customerName: 'Mehmet Demir', description: '5 adet tavuk but', items: 5, total: 210.25, status: 'Tamamlandı' },
+  { id: 'ORD004', customerId: 'CUS004', customerName: 'Fatma Şahin', description: '1kg antrikot', items: 2, total: 88.75, status: 'İptal Edildi' },
+  { id: 'ORD005', customerId: 'CUS005', customerName: 'Mustafa Arslan', description: '2kg kuzu pirzola', items: 4, total: 150.00, status: 'Tamamlandı' },
+];
+
+export const stockAdjustments: StockAdjustment[] = [
+  { id: 'ADJ001', productId: 'PROD001', productName: 'Antrikot', quantity: -2, description: 'Son kullanma tarihi geçti', category: 'Bozulma', date: '2023-10-26' },
+  { id: 'ADJ002', productId: 'PROD002', productName: 'Kıyma', quantity: -5, description: 'İlk sayımda yazım hatası', category: 'Veri Giriş Hatası', date: '2023-10-25' },
+  { id: 'ADJ003', productId: 'PROD006', productName: 'Tavuk Göğsü', quantity: 10, description: 'Tedarikçiden fazla geldi', category: 'Hatalı Ürün Alımı', date: '2023-10-24' },
+  { id: 'ADJ004', productId: 'PROD003', productName: 'Kuzu Pirzola', quantity: -1, description: 'Ambalaj hasarlı', category: 'Bozulma', date: '2023-10-23' },
+];
+
 export const alerts: MonitoringAlert[] = [
   { id: 'ALT001', severity: 'high', title: 'Negatif Stok: Antrikot', description: 'Antrikot stok adedi -2. Lütfen hemen inceleyin.', timestamp: '2023-10-27 09:15' },
   { id: 'ALT002', severity: 'medium', title: 'Yüksek İndirim Uygulandı', description: 'ORD003 numaralı siparişe %50 indirim uygulandı, standart %20 limiti aşıldı.', timestamp: '2023-10-26 14:30' },
@@ -40,13 +40,13 @@ export const alerts: MonitoringAlert[] = [
 ];
 
 export const products: Product[] = [
-  { id: 'PROD001', name: 'Antrikot', type: 'beef', stock: 15, lowStockThreshold: 5 },
-  { id: 'PROD002', name: 'Kıyma', type: 'beef', stock: 50, lowStockThreshold: 10 },
-  { id: 'PROD003', name: 'Kuzu Pirzola', type: 'beef', stock: 12, lowStockThreshold: 5 },
-  { id: 'PROD004', name: 'Pastırma', type: 'pork', stock: 25, lowStockThreshold: 8 },
-  { id: 'PROD005', name: 'Sucuk', type: 'pork', stock: 40, lowStockThreshold: 15 },
-  { id: 'PROD006', name: 'Tavuk Göğsü', type: 'chicken', stock: 4, lowStockThreshold: 10 },
-  { id: 'PROD007', name: 'Tavuk But', type: 'chicken', stock: 22, lowStockThreshold: 10 },
+  { id: 'PROD001', name: 'Antrikot', type: 'beef', stock: 15, price: 850, cost: 600, lowStockThreshold: 5 },
+  { id: 'PROD002', name: 'Kıyma', type: 'beef', stock: 50, price: 550, cost: 400, lowStockThreshold: 10 },
+  { id: 'PROD003', name: 'Kuzu Pirzola', type: 'beef', stock: 12, price: 950, cost: 750, lowStockThreshold: 5 },
+  { id: 'PROD004', name: 'Pastırma', type: 'pork', stock: 25, price: 1200, cost: 900, lowStockThreshold: 8 },
+  { id: 'PROD005', name: 'Sucuk', type: 'pork', stock: 40, price: 450, cost: 300, lowStockThreshold: 15 },
+  { id: 'PROD006', name: 'Tavuk Göğsü', type: 'chicken', stock: 4, price: 250, cost: 180, lowStockThreshold: 10 },
+  { id: 'PROD007', name: 'Tavuk But', type: 'chicken', stock: 22, price: 180, cost: 120, lowStockThreshold: 10 },
 ];
 
 export const expenses: Expense[] = [

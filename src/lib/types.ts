@@ -1,6 +1,8 @@
 export type Order = {
   id: string;
-  customer: string;
+  customerId: string;
+  customerName: string; 
+  description: string;
   items: number;
   total: number;
   status: 'Tamamlandı' | 'Bekliyor' | 'İptal Edildi';
@@ -13,9 +15,10 @@ export type Sale = {
 
 export type StockAdjustment = {
   id: string;
-  product: string;
+  productId: string;
+  productName: string;
   quantity: number;
-  reason: string;
+  description: string;
   category: 'Bozulma' | 'Hırsızlık' | 'Veri Giriş Hatası' | 'Hatalı Ürün Alımı' | 'İndirim' | 'Diğer';
   date: string;
 };
@@ -40,6 +43,8 @@ export type Product = {
   name: string;
   type: 'beef' | 'pork' | 'chicken';
   stock: number;
+  price: number;
+  cost: number;
   lowStockThreshold: number;
 };
 

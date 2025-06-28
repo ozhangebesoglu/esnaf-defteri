@@ -23,13 +23,16 @@ const productSchema = z.object({
   type: z.enum(['beef', 'pork', 'chicken'], {
     required_error: "Lütfen bir ürün tipi seçin.",
   }),
+  cost: z.coerce.number().positive("Maliyet pozitif bir sayı olmalıdır."),
+  price: z.coerce.number().positive("Satış fiyatı pozitif bir sayı olmalıdır."),
+  lowStockThreshold: z.coerce.number().int().min(0, "Stok eşiği negatif olamaz."),
 })
 
 function ProductForm({ product, setOpen }: { product?: Product, setOpen: (open: boolean) => void }) {
   const { toast } = useToast()
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
-    defaultValues: product || { name: "", type: "beef" },
+    defaultValues: product || { name: "", type: "beef", cost: 0, price: 0, lowStockThreshold: 0 },
   })
 
   function onSubmit(values: z.infer<typeof productSchema>) {
@@ -77,6 +80,41 @@ function ProductForm({ product, setOpen }: { product?: Product, setOpen: (open: 
             </FormItem>
           )}
         />
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="cost"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Maliyet Fiyatı (₺)</FormLabel>
+                <FormControl><Input type="number" step="0.01" placeholder="örn., 600.00" {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="price"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Satış Fiyatı (₺)</FormLabel>
+                <FormControl><Input type="number" step="0.01" placeholder="örn., 850.00" {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+        <FormField
+            control={form.control}
+            name="lowStockThreshold"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Düşük Stok Eşiği (Adet/Kg)</FormLabel>
+                <FormControl><Input type="number" placeholder="örn., 5" {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
         <DialogFooter>
           <Button type="submit">Ürünü Kaydet</Button>
         </DialogFooter>
@@ -108,9 +146,9 @@ export default function Products() {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Ürünler</CardTitle>
-          <CardDescription>İşletmenizde sattığınız ürünleri yönetin.</CardDescription>
+          <CardDescription>İşletmenizdeki ürünleri, fiyatlarını ve stok bilgilerini yönetin.</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(isOpen) => { if(!isOpen) setSelectedProduct(undefined); setOpen(isOpen);}}>
           <DialogTrigger asChild>
             <Button onClick={() => handleOpenDialog()}>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -135,6 +173,7 @@ export default function Products() {
               <TableHead className="w-[80px]">İkon</TableHead>
               <TableHead>Ürün Adı</TableHead>
               <TableHead>Tipi</TableHead>
+              <TableHead className="text-right">Satış Fiyatı</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -146,6 +185,9 @@ export default function Products() {
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell>{getProductTypeName(product.type)}</TableCell>
+                <TableCell className="text-right font-mono">
+                    {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(product.price)}
+                </TableCell>
                 <TableCell>
                   <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(product)}>
                     <Pencil className="h-4 w-4" />

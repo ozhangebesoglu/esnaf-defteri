@@ -23,6 +23,19 @@ import Cashbox from '@/components/cashbox';
 import Reports from '@/components/reports';
 import { Logo } from '@/components/logo';
 
+import { 
+  initialCustomers, 
+  initialExpenses, 
+  initialOrders, 
+  initialProducts, 
+  initialStockAdjustments,
+  initialCashboxHistory,
+  initialAlerts,
+  salesData
+} from '@/lib/data';
+import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert } from '@/lib/types';
+import { useToast } from "@/hooks/use-toast";
+
 type View = 'anasayfa' | 'envanter' | 'finansal' | 'cari' | 'kasa' | 'raporlar' | 'uyarilar';
 
 const viewTitles: Record<View, string> = {
@@ -35,27 +48,203 @@ const viewTitles: Record<View, string> = {
   uyarilar: 'Uyarılar',
 };
 
+// A simple ID generator
+const generateId = (prefix: string) => `${prefix}${Math.random().toString(36).substr(2, 9)}`;
+
 export default function Home() {
   const [activeView, setActiveView] = useState<View>('anasayfa');
+  const { toast } = useToast();
+
+  // In-memory state management
+  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+  const [stockAdjustments, setStockAdjustments] = useState<StockAdjustment[]>(initialStockAdjustments);
+  const [cashboxHistory, setCashboxHistory] = useState<CashboxHistory[]>(initialCashboxHistory);
+  const [alerts, setAlerts] = useState<MonitoringAlert[]>(initialAlerts);
+
+
+  // --- Handlers ---
+  
+  // Customers
+  const handleAddCustomer = (data: Omit<Customer, 'id' | 'balance'>) => {
+    const newCustomer: Customer = { id: generateId('CUS'), name: data.name, email: data.email, balance: 0 };
+    setCustomers(prev => [...prev, newCustomer]);
+    toast({ title: "Müşteri Eklendi", description: `${newCustomer.name} başarıyla eklendi.` });
+  };
+  const handleUpdateCustomer = (data: Customer) => {
+    setCustomers(prev => prev.map(c => c.id === data.id ? data : c));
+    toast({ title: "Müşteri Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+  };
+  const handleDeleteCustomer = (id: string) => {
+    setCustomers(prev => prev.filter(c => c.id !== id));
+    toast({ title: "Müşteri Silindi", description: "Müşteri başarıyla silindi.", variant: "destructive" });
+  };
+
+  // Products
+  const handleAddProduct = (data: Omit<Product, 'id' | 'stock'>) => {
+    const newProduct: Product = { ...data, id: generateId('PROD'), stock: 0 };
+    setProducts(prev => [...prev, newProduct]);
+    toast({ title: "Ürün Eklendi", description: `${newProduct.name} başarıyla eklendi.` });
+  };
+  const handleUpdateProduct = (data: Product) => {
+    setProducts(prev => prev.map(p => p.id === data.id ? data : p));
+    toast({ title: "Ürün Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+  };
+  const handleDeleteProduct = (id: string) => {
+    setProducts(prev => prev.filter(p => p.id !== id));
+    toast({ title: "Ürün Silindi", description: "Ürün başarıyla silindi.", variant: "destructive" });
+  };
+
+  // Sales (Orders)
+  const handleAddSale = (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items'>) => {
+    const customer = customers.find(c => c.id === data.customerId);
+    if (!customer) return;
+
+    const newOrder: Order = {
+      ...data,
+      id: generateId('ORD'),
+      customerName: customer.name,
+      date: new Date().toLocaleString('tr-TR'),
+      status: 'Tamamlandı',
+      items: data.description.split(',').length,
+    };
+    
+    setOrders(prev => [newOrder, ...prev]);
+    // Update customer balance
+    setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, balance: c.balance - data.total } : c));
+    toast({ title: "Satış Eklendi", description: "Yeni satış kaydı oluşturuldu." });
+  };
+   const handleAddPayment = (data: { customerId: string, total: number, description: string }) => {
+    const customer = customers.find(c => c.id === data.customerId);
+    if (!customer) return;
+
+    const newPayment: Order = {
+      id: generateId('PAY'),
+      customerId: data.customerId,
+      customerName: customer.name,
+      description: data.description || 'Nakit Ödeme',
+      items: 1,
+      total: -data.total, // Payment is a negative total
+      status: 'Tamamlandı',
+      date: new Date().toLocaleString('tr-TR'),
+    };
+    
+    setOrders(prev => [newPayment, ...prev]);
+    // Update customer balance
+    setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, balance: c.balance + data.total } : c));
+    toast({ title: "Ödeme Alındı", description: `${customer.name} için ödeme kaydedildi.` });
+  };
+  const handleUpdateSale = (data: Order) => {
+    // This is complex because it might affect old and new customer balances.
+    // For this version, we will just update the order details.
+    setOrders(prev => prev.map(o => o.id === data.id ? data : o));
+    toast({ title: "Satış Güncellendi", description: `${data.id} numaralı satış güncellendi.` });
+  };
+  const handleDeleteSale = (id: string) => {
+    const orderToDelete = orders.find(o => o.id === id);
+    if (!orderToDelete) return;
+
+    // Revert customer balance
+    setCustomers(prev => prev.map(c => c.id === orderToDelete.customerId ? { ...c, balance: c.balance + orderToDelete.total } : c));
+
+    setOrders(prev => prev.filter(o => o.id !== id));
+    toast({ title: "Satış Silindi", description: "Satış kaydı silindi.", variant: "destructive" });
+  };
+
+  // Expenses
+  const handleAddExpense = (data: Omit<Expense, 'id' | 'date'>) => {
+    const newExpense: Expense = { ...data, id: generateId('EXP'), date: new Date().toLocaleDateString('tr-TR') };
+    setExpenses(prev => [newExpense, ...prev]);
+    toast({ title: "Gider Eklendi", description: "Yeni gider kaydı oluşturuldu." });
+  };
+  const handleUpdateExpense = (data: Expense) => {
+    setExpenses(prev => prev.map(e => e.id === data.id ? data : e));
+    toast({ title: "Gider Güncellendi" });
+  };
+  const handleDeleteExpense = (id: string) => {
+    setExpenses(prev => prev.filter(e => e.id !== id));
+    toast({ title: "Gider Silindi", variant: "destructive" });
+  };
+
+  // Stock Adjustments
+  const handleAddStockAdjustment = (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => {
+    const product = products.find(p => p.id === data.productId);
+    if (!product) return;
+
+    const newAdjustment: StockAdjustment = { 
+      ...data, 
+      id: generateId('ADJ'), 
+      productName: product.name,
+      date: new Date().toLocaleString('tr-TR'),
+    };
+    setStockAdjustments(prev => [newAdjustment, ...prev]);
+    // Update product stock
+    setProducts(prev => prev.map(p => p.id === data.productId ? { ...p, stock: p.stock + data.quantity } : p));
+    toast({ title: "Stok Hareketi Eklendi" });
+  };
+  const handleUpdateStockAdjustment = (data: StockAdjustment) => {
+    // Logic for reverting old stock and applying new one would be needed for full accuracy
+    setStockAdjustments(prev => prev.map(a => a.id === data.id ? data : a));
+    toast({ title: "Stok Hareketi Güncellendi" });
+  };
+  const handleDeleteStockAdjustment = (id: string) => {
+    const adjToDelete = stockAdjustments.find(a => a.id === id);
+    if(!adjToDelete) return;
+
+    // Revert product stock
+    setProducts(prev => prev.map(p => p.id === adjToDelete.productId ? { ...p, stock: p.stock - adjToDelete.quantity } : p));
+
+    setStockAdjustments(prev => prev.filter(a => a.id !== id));
+    toast({ title: "Stok Hareketi Silindi", variant: "destructive" });
+  };
+
 
   const renderView = () => {
     switch (activeView) {
       case 'anasayfa':
-        return <Dashboard />;
+        return <Dashboard customers={customers} expenses={expenses} salesData={salesData} />;
       case 'envanter':
-        return <Inventory />;
+        return <Inventory 
+                  products={products} 
+                  stockAdjustments={stockAdjustments}
+                  onAddProduct={handleAddProduct}
+                  onUpdateProduct={handleUpdateProduct}
+                  onDeleteProduct={handleDeleteProduct}
+                  onAddStockAdjustment={handleAddStockAdjustment}
+                  onUpdateStockAdjustment={handleUpdateStockAdjustment}
+                  onDeleteStockAdjustment={handleDeleteStockAdjustment}
+                />;
       case 'finansal':
-        return <Financials />;
+        return <Financials 
+                  orders={orders}
+                  customers={customers}
+                  expenses={expenses}
+                  onAddSale={handleAddSale}
+                  onUpdateSale={handleUpdateSale}
+                  onDeleteSale={handleDeleteSale}
+                  onAddExpense={handleAddExpense}
+                  onUpdateExpense={handleUpdateExpense}
+                  onDeleteExpense={handleDeleteExpense}
+                />;
       case 'cari':
-        return <Customers />;
+        return <Customers 
+                  customers={customers}
+                  orders={orders}
+                  onAddCustomer={handleAddCustomer}
+                  onUpdateCustomer={handleUpdateCustomer}
+                  onDeleteCustomer={handleDeleteCustomer}
+                  onAddPayment={handleAddPayment}
+               />;
       case 'kasa':
-        return <Cashbox />;
+        return <Cashbox history={cashboxHistory} setHistory={setCashboxHistory} />;
       case 'raporlar':
-        return <Reports />;
+        return <Reports customers={customers} expenses={expenses} orders={orders} products={products} />;
       case 'uyarilar':
-        return <Monitoring />;
+        return <Monitoring alerts={alerts} />;
       default:
-        return <Dashboard />;
+        return <Dashboard customers={customers} expenses={expenses} salesData={salesData} />;
     }
   };
 

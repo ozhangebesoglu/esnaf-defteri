@@ -3,7 +3,6 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { useToast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
 import { DialogFooter } from "@/components/ui/dialog"
@@ -13,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Product } from "@/lib/types"
 
 export const productSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(2, "Ürün adı en az 2 karakter olmalıdır."),
   type: z.enum(['beef', 'pork', 'chicken'], {
     required_error: "Lütfen bir ürün tipi seçin.",
@@ -20,21 +20,23 @@ export const productSchema = z.object({
   cost: z.coerce.number().positive("Maliyet pozitif bir sayı olmalıdır."),
   price: z.coerce.number().positive("Satış fiyatı pozitif bir sayı olmalıdır."),
   lowStockThreshold: z.coerce.number().int().min(0, "Stok eşiği negatif olamaz."),
+  stock: z.coerce.number().int().optional(),
 })
 
-export function ProductForm({ product, setOpen }: { product?: Product, setOpen: (open: boolean) => void }) {
-  const { toast } = useToast()
+interface ProductFormProps {
+    product?: Product;
+    setOpen: (open: boolean) => void;
+    onSave: (data: any) => void;
+}
+
+export function ProductForm({ product, setOpen, onSave }: ProductFormProps) {
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
-    defaultValues: product || { name: "", type: "beef", cost: 0, price: 0, lowStockThreshold: 0 },
+    defaultValues: product || { name: "", type: "beef", cost: 0, price: 0, lowStockThreshold: 10 },
   })
 
   function onSubmit(values: z.infer<typeof productSchema>) {
-    console.log(values)
-    toast({
-      title: `Ürün ${product ? 'Güncellendi' : 'Eklendi'}`,
-      description: `${values.name} adlı ürün kaydedildi.`,
-    })
+    onSave(values);
     setOpen(false)
   }
 

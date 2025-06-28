@@ -4,12 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, TrendingDown, Scale } from "lucide-react"
-import { expenses, recentOrders, products, customers } from "@/lib/data"
 import { ProductIcon } from "./product-icons"
+import type { Customer, Expense, Order, Product } from "@/lib/types"
 
-export default function Reports() {
+interface ReportsProps {
+    customers: Customer[];
+    expenses: Expense[];
+    orders: Order[];
+    products: Product[];
+}
 
-    const totalRevenue = recentOrders.filter(o => o.status === 'Tamamlandı').reduce((sum, order) => sum + order.total, 0);
+export default function Reports({ customers, expenses, orders, products }: ReportsProps) {
+
+    const totalRevenue = orders.filter(o => o.status === 'Tamamlandı' && o.total > 0).reduce((sum, order) => sum + order.total, 0);
     const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
     const netProfit = totalRevenue - totalExpenses;
     
@@ -94,7 +101,7 @@ export default function Reports() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {productSales.map((p) => {
+                    {productSales.length > 0 ? productSales.map((p) => {
                         const productDetails = products.find(prod => prod.id === p.productId);
                         return (
                             <TableRow key={p.productId}>
@@ -108,7 +115,11 @@ export default function Reports() {
                                 </TableCell>
                             </TableRow>
                         )
-                    })}
+                    }) : (
+                        <TableRow>
+                            <TableCell colSpan={4} className="h-24 text-center">Rapor oluşturmak için yeterli veri yok.</TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
                 </Table>
             </CardContent>
@@ -131,7 +142,7 @@ export default function Reports() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {customerPurchases.map((c) => {
+                    {customerPurchases.length > 0 ? customerPurchases.map((c) => {
                          const customerDetails = customers.find(cust => cust.id === c.customerId);
                         return (
                         <TableRow key={c.customerId}>
@@ -140,12 +151,16 @@ export default function Reports() {
                             <TableCell className="text-right font-mono font-medium">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(c.totalSpent)}
                             </TableCell>
-                             <TableCell className={`text-right font-mono ${customerDetails && customerDetails.balance < 0 ? 'text-destructive' : ''}`}>
+                             <TableCell className={`text-right font-mono ${customerDetails && customerDetails.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
                                 {customerDetails && new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customerDetails.balance)}
                             </TableCell>
                         </TableRow>
                         )
-                    })}
+                    }) : (
+                         <TableRow>
+                            <TableCell colSpan={4} className="h-24 text-center">Rapor oluşturmak için yeterli veri yok.</TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
                 </Table>
             </CardContent>

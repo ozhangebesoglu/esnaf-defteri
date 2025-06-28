@@ -3,8 +3,21 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Sales from "./sales"
 import Expenses from "./expenses"
+import type { Order, Customer, Expense } from "@/lib/types"
 
-export default function Financials() {
+interface FinancialsProps {
+  orders: Order[];
+  customers: Customer[];
+  expenses: Expense[];
+  onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'>) => void;
+  onUpdateSale: (data: Order) => void;
+  onDeleteSale: (id: string) => void;
+  onAddExpense: (data: Omit<Expense, 'id'|'date'>) => void;
+  onUpdateExpense: (data: Expense) => void;
+  onDeleteExpense: (id: string) => void;
+}
+
+export default function Financials(props: FinancialsProps) {
   return (
     <Tabs defaultValue="sales" className="w-full">
       <TabsList className="grid w-full grid-cols-2">
@@ -12,10 +25,21 @@ export default function Financials() {
         <TabsTrigger value="expenses">Giderler</TabsTrigger>
       </TabsList>
       <TabsContent value="sales">
-        <Sales />
+        <Sales 
+          orders={props.orders}
+          customers={props.customers}
+          onAddSale={props.onAddSale}
+          onUpdateSale={props.onUpdateSale}
+          onDeleteSale={props.onDeleteSale}
+        />
       </TabsContent>
       <TabsContent value="expenses">
-        <Expenses />
+        <Expenses 
+          expenses={props.expenses}
+          onAddExpense={props.onAddExpense}
+          onUpdateExpense={props.onUpdateExpense}
+          onDeleteExpense={props.onDeleteExpense}
+        />
       </TabsContent>
     </Tabs>
   )

@@ -13,26 +13,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { cashboxHistory } from "@/lib/data"
+import type { CashboxHistory } from "@/lib/types"
 
 const closeDaySchema = z.object({
   actualBalance: z.coerce.number().min(0, "Kasa sayımı negatif olamaz."),
 })
 
-function CloseDayForm({ setOpen, expectedBalance }: { setOpen: (open: boolean) => void, expectedBalance: number }) {
-  const { toast } = useToast()
+function CloseDayForm({ setOpen, expectedBalance, onDayClose }: { setOpen: (open: boolean) => void, expectedBalance: number, onDayClose: (actualBalance: number) => void }) {
   const form = useForm<z.infer<typeof closeDaySchema>>({
     resolver: zodResolver(closeDaySchema),
     defaultValues: { actualBalance: expectedBalance },
   })
 
   function onSubmit(values: z.infer<typeof closeDaySchema>) {
-    const difference = values.actualBalance - expectedBalance;
-    console.log(values)
-    toast({
-      title: "Gün Kapatıldı",
-      description: `Kasa sayımı tamamlandı. Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(difference)}`,
-    })
+    onDayClose(values.actualBalance);
     setOpen(false)
   }
 
@@ -63,13 +57,32 @@ function CloseDayForm({ setOpen, expectedBalance }: { setOpen: (open: boolean) =
 }
 
 
-export default function Cashbox() {
+export default function Cashbox({ history, setHistory }: { history: CashboxHistory[], setHistory: (history: CashboxHistory[]) => void }) {
   const [open, setOpen] = useState(false);
+  const { toast } = useToast();
   
-  const openingBalance = cashboxHistory[0]?.closing || 0;
-  const cashIn = 1250.75; // Mock data
-  const cashOut = 320.50; // Mock data
+  const openingBalance = history[0]?.closing || 0;
+  const cashIn = 1250.75; // Mock data, should be calculated from actual sales
+  const cashOut = 320.50; // Mock data, should be calculated from actual expenses
   const expectedBalance = openingBalance + cashIn - cashOut;
+
+  const handleDayClose = (actualBalance: number) => {
+    const difference = actualBalance - expectedBalance;
+    const newEntry: CashboxHistory = {
+        id: `CBH${history.length + 1}`,
+        date: new Date().toLocaleDateString('tr-TR'),
+        opening: openingBalance,
+        cashIn: cashIn,
+        cashOut: cashOut,
+        closing: actualBalance,
+        difference: difference
+    };
+    setHistory([newEntry, ...history]);
+    toast({
+      title: "Gün Kapatıldı",
+      description: `Kasa sayımı tamamlandı. Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(difference)}`,
+    });
+  };
 
   return (
     <div className="grid gap-6">
@@ -93,7 +106,7 @@ export default function Cashbox() {
                     Gün sonu kasa sayımını yaparak günü kapatın.
                 </DialogDescription>
                 </DialogHeader>
-                <CloseDayForm setOpen={setOpen} expectedBalance={expectedBalance} />
+                <CloseDayForm setOpen={setOpen} expectedBalance={expectedBalance} onDayClose={handleDayClose} />
             </DialogContent>
             </Dialog>
         </CardHeader>
@@ -159,7 +172,7 @@ export default function Cashbox() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cashboxHistory.map((entry) => (
+              {history.length > 0 ? history.map((entry) => (
                 <TableRow key={entry.id}>
                   <TableCell className="font-medium">{entry.date}</TableCell>
                   <TableCell className="text-right font-mono">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.opening)}</TableCell>
@@ -170,7 +183,11 @@ export default function Cashbox() {
                     {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.difference)}
                   </TableCell>
                 </TableRow>
-              ))}
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">Geçmiş kasa kaydı bulunamadı.</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

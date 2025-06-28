@@ -3,7 +3,6 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { AlertTriangle, Info, ShieldX } from "lucide-react"
-import { alerts } from "@/lib/data"
 import type { MonitoringAlert } from "@/lib/types"
 
 const alertIcons = {
@@ -18,7 +17,7 @@ const alertVariants: { [key in MonitoringAlert['severity']]: "default" | "destru
   high: "destructive",
 }
 
-export default function Monitoring() {
+export default function Monitoring({ alerts }: { alerts: MonitoringAlert[] }) {
   return (
     <Card>
       <CardHeader>
@@ -27,7 +26,7 @@ export default function Monitoring() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {alerts.map(alert => (
+          {alerts.length > 0 ? alerts.map(alert => (
             <Alert key={alert.id} variant={alertVariants[alert.severity]}>
               {alertIcons[alert.severity]}
               <AlertTitle className="font-headline">{alert.title}</AlertTitle>
@@ -36,8 +35,7 @@ export default function Monitoring() {
                 <p className="text-xs text-muted-foreground mt-1">{alert.timestamp}</p>
               </AlertDescription>
             </Alert>
-          ))}
-          {alerts.length === 0 && (
+          )) : (
             <div className="text-center py-10">
               <p className="text-muted-foreground">Şu anda uyarı yok. Her şey yolunda görünüyor!</p>
             </div>

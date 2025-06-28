@@ -1,19 +1,22 @@
 "use client"
 
 import { useState } from "react"
-import { recentOrders, customers } from "@/lib/data"
-import type { Order } from "@/lib/types"
+import type { Customer, Order } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ArrowLeft, Pencil } from "lucide-react"
 import { Badge } from "./ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { SaleForm } from "./sale-form"
 
-export default function SaleDetail({ orderId, onBack }: { orderId: string, onBack: () => void }) {
+export default function SaleDetail({ order, customer, onBack, onUpdateSale }: { 
+  order: Order | undefined, 
+  customer: Customer | undefined, 
+  onBack: () => void,
+  onUpdateSale: (data: Order) => void,
+}) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const order = recentOrders.find(o => o.id === orderId)
   
   if (!order) {
     return (
@@ -26,8 +29,6 @@ export default function SaleDetail({ orderId, onBack }: { orderId: string, onBac
     )
   }
 
-  const customer = customers.find(c => c.id === order.customerId);
-  
   const getStatusVariant = (status: Order['status']) => {
     switch (status) {
       case 'Tamamlandı': return 'default'
@@ -35,6 +36,10 @@ export default function SaleDetail({ orderId, onBack }: { orderId: string, onBac
       case 'İptal Edildi': return 'destructive'
       default: return 'outline'
     }
+  }
+
+  const handleSave = (data: Order) => {
+    onUpdateSale(data);
   }
   
   return (
@@ -47,7 +52,7 @@ export default function SaleDetail({ orderId, onBack }: { orderId: string, onBac
                  {order.id} numaralı satışı düzenleyin.
               </DialogDescription>
             </DialogHeader>
-            <SaleForm sale={order} setOpen={setIsEditDialogOpen} />
+            <SaleForm sale={order} setOpen={setIsEditDialogOpen} onSave={handleSave} customers={customer ? [customer] : []} />
           </DialogContent>
         </Dialog>
 
@@ -99,7 +104,7 @@ export default function SaleDetail({ orderId, onBack }: { orderId: string, onBac
             </CardHeader>
             <CardContent>
                 <div className="flex justify-between">
-                    <span className="text-muted-foreground">Ürün Sayısı</span>
+                    <span className="text-muted-foreground">Ürün/Hizmet Sayısı</span>
                     <span>{order.items}</span>
                 </div>
                  <div className="flex justify-between font-semibold text-lg mt-2">

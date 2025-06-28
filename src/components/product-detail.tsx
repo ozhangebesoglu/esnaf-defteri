@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { products, stockAdjustments } from "@/lib/data"
 import type { Product, StockAdjustment } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -23,11 +22,14 @@ const categoryColors: { [key in StockAdjustment['category']]: string } = {
 };
 
 
-export default function ProductDetail({ productId, onBack }: { productId: string, onBack: () => void }) {
+export default function ProductDetail({ product, adjustments, onBack, onUpdateProduct }: { 
+  product: Product | undefined, 
+  adjustments: StockAdjustment[], 
+  onBack: () => void,
+  onUpdateProduct: (data: Product) => void,
+}) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const product = products.find(p => p.id === productId)
-  const adjustments = stockAdjustments.filter(adj => adj.productId === productId)
-
+  
   if (!product) {
     return (
       <div className="text-center">
@@ -37,6 +39,10 @@ export default function ProductDetail({ productId, onBack }: { productId: string
         </Button>
       </div>
     )
+  }
+
+  const handleSave = (data: Product) => {
+    onUpdateProduct(data);
   }
 
   return (
@@ -49,7 +55,7 @@ export default function ProductDetail({ productId, onBack }: { productId: string
                 {product.name} ürününün detaylarını güncelle.
               </DialogDescription>
             </DialogHeader>
-            <ProductForm product={product} setOpen={setIsEditDialogOpen} />
+            <ProductForm product={product} setOpen={setIsEditDialogOpen} onSave={handleSave} />
           </DialogContent>
         </Dialog>
 
@@ -133,7 +139,7 @@ export default function ProductDetail({ productId, onBack }: { productId: string
                      <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
                    </TableCell>
                   <TableCell>{adj.description}</TableCell>
-                  <TableCell className={`text-right font-bold font-mono text-lg ${adj.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <TableCell className={`text-right font-bold font-mono text-lg ${adj.quantity >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
                   </TableCell>
                 </TableRow>

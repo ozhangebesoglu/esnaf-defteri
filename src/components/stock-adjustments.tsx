@@ -4,9 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { PlusCircle, Loader2, Pencil } from "lucide-react";
+import { PlusCircle, Loader2, Pencil, Trash2 } from "lucide-react";
 import { categorizeStockAdjustment } from "@/ai/flows/categorize-stock-adjustment";
-import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -17,13 +16,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { stockAdjustments, products } from "@/lib/data";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { StockAdjustment, Product } from "@/lib/types";
 import { ProductIcon } from "./product-icons";
 
 const adjustmentSchema = z.object({
+  id: z.string().optional(),
   productId: z.string().min(1, "Lütfen bir ürün seçin."),
-  quantity: z.coerce.number().int("Miktar tam sayı olmalıdır."),
+  quantity: z.coerce.number().int("Miktar tam sayı olmalıdır.").refine(val => val !== 0, "Miktar 0 olamaz."),
   description: z.string().min(10, "Açıklama en az 10 karakter olmalıdır."),
   category: z.enum(['Bozulma', 'Hırsızlık', 'Veri Giriş Hatası', 'Hatalı Ürün Alımı', 'İndirim', 'Diğer']),
 });
@@ -37,15 +37,21 @@ const categoryColors: { [key in StockAdjustment['category']]: string } = {
   'Diğer': "bg-gray-100 text-gray-800",
 };
 
-function AdjustmentForm({ adjustment, setOpen }: { adjustment?: StockAdjustment, setOpen: (open: boolean) => void }) {
-  const { toast } = useToast();
+function AdjustmentForm({ adjustment, setOpen, onSave, products }: { 
+  adjustment?: StockAdjustment, 
+  setOpen: (open: boolean) => void,
+  onSave: (data: any) => void,
+  products: Product[],
+}) {
   const [isCategorizing, setIsCategorizing] = useState(false);
   
   const form = useForm<z.infer<typeof adjustmentSchema>>({
     resolver: zodResolver(adjustmentSchema),
     defaultValues: adjustment || {
-      quantity: 0,
+      quantity: undefined,
       description: "",
+      category: undefined,
+      productId: undefined,
     },
   });
 
@@ -60,15 +66,11 @@ function AdjustmentForm({ adjustment, setOpen }: { adjustment?: StockAdjustment,
         form.setValue("category", result.category as StockAdjustment['category'], { shouldValidate: true });
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Yapay Zeka Sınıflandırması Başarısız",
-        description: "Bir kategori önerilemedi. Lütfen manuel olarak seçin.",
-      });
+        console.error("AI categorization failed:", error);
     } finally {
       setIsCategorizing(false);
     }
-  }, [form, toast]);
+  }, [form]);
 
   useEffect(() => {
     if (adjustment) return; // Don't auto-categorize on edit
@@ -85,11 +87,7 @@ function AdjustmentForm({ adjustment, setOpen }: { adjustment?: StockAdjustment,
   }, [description, handleCategorize, adjustment]);
 
   function onSubmit(values: z.infer<typeof adjustmentSchema>) {
-    console.log(values);
-    toast({
-      title: `Hareket ${adjustment ? 'Güncellendi' : 'Gönderildi'}`,
-      description: "Stok hareketi başarıyla kaydedildi.",
-    });
+    onSave(values);
     setOpen(false);
   }
 
@@ -121,7 +119,7 @@ function AdjustmentForm({ adjustment, setOpen }: { adjustment?: StockAdjustment,
             <FormItem>
               <FormLabel>Miktar (Adet/Kg)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="örn., -5 veya 10" {...field} />
+                <Input type="number" placeholder="Stok artışı için pozitif (örn: 10), azalışı için negatif (örn: -5)" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -134,7 +132,7 @@ function AdjustmentForm({ adjustment, setOpen }: { adjustment?: StockAdjustment,
             <FormItem>
               <FormLabel>Neden / Açıklama</FormLabel>
               <FormControl>
-                <Textarea placeholder="örn., 'Tedarikçi X'ten 2 kasa fazla geldi'" {...field} />
+                <Textarea placeholder="örn., 'Tedarikçi X'ten 2 kasa fazla geldi' veya 'Son kullanma tarihi geçti'" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -169,79 +167,127 @@ function AdjustmentForm({ adjustment, setOpen }: { adjustment?: StockAdjustment,
   )
 }
 
-export default function StockAdjustments() {
-  const [open, setOpen] = useState(false);
+interface StockAdjustmentsProps {
+    stockAdjustments: StockAdjustment[];
+    products: Product[];
+    onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void;
+    onUpdateStockAdjustment: (data: StockAdjustment) => void;
+    onDeleteStockAdjustment: (id: string) => void;
+}
+
+export default function StockAdjustments({ stockAdjustments, products, onAddStockAdjustment, onUpdateStockAdjustment, onDeleteStockAdjustment }: StockAdjustmentsProps) {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAdjustment, setSelectedAdjustment] = useState<StockAdjustment | undefined>(undefined);
+  const [adjustmentToDelete, setAdjustmentToDelete] = useState<StockAdjustment | null>(null);
 
   const handleOpenDialog = (adjustment?: StockAdjustment) => {
     setSelectedAdjustment(adjustment);
-    setOpen(true);
+    setDialogOpen(true);
   };
   
+  const handleSave = (data: any) => {
+      if(selectedAdjustment) {
+          onUpdateStockAdjustment(data);
+      } else {
+          onAddStockAdjustment(data);
+      }
+  }
+
+  const handleDelete = () => {
+    if (adjustmentToDelete) {
+        onDeleteStockAdjustment(adjustmentToDelete.id);
+        setAdjustmentToDelete(null);
+    }
+  }
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Stok Hareketleri</CardTitle>
-          <CardDescription>Tüm manuel envanter değişikliklerinin kaydı.</CardDescription>
-        </div>
-        <Dialog open={open} onOpenChange={(isOpen) => { if(!isOpen) setSelectedAdjustment(undefined); setOpen(isOpen);}}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Yeni Hareket
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>{selectedAdjustment ? 'Hareketi Düzenle' : 'Yeni Stok Hareketi'}</DialogTitle>
-              <DialogDescription>
-                {selectedAdjustment ? 'Mevcut stok hareketini düzenleyin.' : 'Ürün envanter seviyelerinde yeni bir değişiklik kaydedin.'}
-              </DialogDescription>
-            </DialogHeader>
-            <AdjustmentForm adjustment={selectedAdjustment} setOpen={setOpen} />
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Ürün</TableHead>
-              <TableHead className="text-center">Miktar</TableHead>
-              <TableHead>Açıklama</TableHead>
-              <TableHead>Kategori</TableHead>
-              <TableHead>Tarih</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {stockAdjustments.map((adj) => {
-              const product = products.find(p => p.id === adj.productId);
-              return (
-              <TableRow key={adj.id}>
-                <TableCell className="font-medium flex items-center gap-3">
-                  {product && <ProductIcon type={product.type} />}
-                  <span>{adj.productName}</span>
-                </TableCell>
-                <TableCell className={`text-center font-bold font-mono text-lg ${adj.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
-                </TableCell>
-                <TableCell>{adj.description}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
-                </TableCell>
-                <TableCell>{adj.date}</TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(adj)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </TableCell>
+    <>
+      <AlertDialog open={!!adjustmentToDelete} onOpenChange={() => setAdjustmentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu işlem geri alınamaz. Seçilen stok hareketi kalıcı olarak silinecektir. Bu işlem ilgili ürünün stok miktarını da güncelleyecektir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Sil</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Stok Hareketleri</CardTitle>
+            <CardDescription>Tüm manuel envanter değişikliklerinin kaydı.</CardDescription>
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={(isOpen) => { if(!isOpen) setSelectedAdjustment(undefined); setDialogOpen(isOpen);}}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpenDialog()}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Yeni Hareket
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>{selectedAdjustment ? 'Hareketi Düzenle' : 'Yeni Stok Hareketi'}</DialogTitle>
+                <DialogDescription>
+                  {selectedAdjustment ? 'Mevcut stok hareketini düzenleyin.' : 'Ürün envanter seviyelerinde yeni bir değişiklik kaydedin.'}
+                </DialogDescription>
+              </DialogHeader>
+              <AdjustmentForm adjustment={selectedAdjustment} setOpen={setDialogOpen} onSave={handleSave} products={products} />
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ürün</TableHead>
+                <TableHead className="text-center">Miktar</TableHead>
+                <TableHead>Açıklama</TableHead>
+                <TableHead>Kategori</TableHead>
+                <TableHead>Tarih</TableHead>
+                <TableHead className="w-[100px] text-right">İşlemler</TableHead>
               </TableRow>
-            )})}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {stockAdjustments.length > 0 ? stockAdjustments.map((adj) => {
+                const product = products.find(p => p.id === adj.productId);
+                return (
+                <TableRow key={adj.id}>
+                  <TableCell className="font-medium flex items-center gap-3">
+                    {product && <ProductIcon type={product.type} />}
+                    <span>{adj.productName}</span>
+                  </TableCell>
+                  <TableCell className={`text-center font-bold font-mono text-lg ${adj.quantity >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
+                  </TableCell>
+                  <TableCell>{adj.description}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
+                  </TableCell>
+                  <TableCell>{adj.date}</TableCell>
+                  <TableCell className="text-right space-x-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(adj)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setAdjustmentToDelete(adj)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )}) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">Kayıtlı stok hareketi bulunamadı.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </>
   )
 }

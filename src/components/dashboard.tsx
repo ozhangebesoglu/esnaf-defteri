@@ -3,8 +3,14 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from "recharts"
-import { salesData, expenses, customers } from "@/lib/data"
 import { DollarSign, Users, TrendingUp, TrendingDown } from "lucide-react"
+import type { Customer, Expense, Sale } from "@/lib/types"
+
+interface DashboardProps {
+    customers: Customer[];
+    expenses: Expense[];
+    salesData: Sale[];
+}
 
 const barChartConfig = {
   revenue: {
@@ -21,7 +27,7 @@ const pieChartColors = [
   "hsl(var(--chart-5))",
 ]
 
-export default function Dashboard() {
+export default function Dashboard({ customers, expenses, salesData }: DashboardProps) {
   const totalReceivables = customers.filter(c => c.balance > 0).reduce((acc, c) => acc + c.balance, 0);
   const totalDebts = customers.filter(c => c.balance < 0).reduce((acc, c) => acc + c.balance, 0);
   const receivablesCount = customers.filter(c => c.balance > 0).length;
@@ -62,7 +68,7 @@ export default function Dashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-destructive">
               {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalReceivables)}
             </div>
             <p className="text-xs text-muted-foreground">{receivablesCount} müşteriden</p>
@@ -74,7 +80,7 @@ export default function Dashboard() {
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">
+            <div className="text-2xl font-bold text-green-600">
              {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Math.abs(totalDebts))}
             </div>
             <p className="text-xs text-muted-foreground">{debtsCount} müşteriden</p>
@@ -82,12 +88,12 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Yeni Müşteriler</CardTitle>
+            <CardTitle className="text-sm font-medium">Müşteri Sayısı</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+42</div>
-            <p className="text-xs text-muted-foreground">dünden beri 3</p>
+            <div className="text-2xl font-bold">{customers.length}</div>
+            <p className="text-xs text-muted-foreground">toplam kayıtlı müşteri</p>
           </CardContent>
         </Card>
       </div>

@@ -20,6 +20,17 @@ import { Logo } from '@/components/logo';
 const formSchema = z.object({
   email: z.string().email({ message: 'Lütfen geçerli bir e-posta adresi girin.' }),
   password: z.string().min(6, { message: 'Şifre en az 6 karakter olmalıdır.' }),
+  confirmPassword: z.string().optional(),
+}).refine((data) => {
+    // If confirmPassword is not provided (login form), skip validation.
+    if (data.confirmPassword === undefined) {
+        return true;
+    }
+    // If it is provided (signup form), it must match the password.
+    return data.password === data.confirmPassword;
+}, {
+  message: "Şifreler eşleşmiyor.",
+  path: ["confirmPassword"],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -133,6 +144,11 @@ export default function LoginPage() {
                   <Label htmlFor="signup-password">Şifre</Label>
                   <Input id="signup-password" type="password" {...register('password')} />
                   {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-confirm-password">Şifre Tekrarı</Label>
+                  <Input id="signup-confirm-password" type="password" {...register('confirmPassword')} />
+                  {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
                 </div>
               </CardContent>
               <CardFooter>

@@ -11,7 +11,20 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Package, BookUser, ShieldAlert, Banknote, UtensilsCrossed, AreaChart, Sparkles, Wallet } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Package, 
+  BookUser, 
+  ShieldAlert, 
+  Banknote, 
+  AreaChart, 
+  Sparkles, 
+  Wallet,
+  ShoppingCart,
+  Truck,
+  Users,
+  Megaphone
+} from 'lucide-react';
 
 import Dashboard from '@/components/dashboard';
 import Customers from '@/components/customers';
@@ -19,10 +32,13 @@ import Monitoring from '@/components/monitoring';
 import Inventory from '@/components/inventory';
 import Financials from '@/components/financials';
 import Cashbox from '@/components/cashbox';
-import Restaurant from '@/components/restaurant';
 import Reports from '@/components/reports';
 import AiChat, { type Message } from '@/components/ai-chat';
 import { Logo } from '@/components/logo';
+import SalesTransactions from '@/components/sales-transactions';
+import Suppliers from '@/components/suppliers';
+import Staff from '@/components/staff';
+import Campaigns from '@/components/campaigns';
 
 import { 
   initialCustomers, 
@@ -37,16 +53,31 @@ import {
 import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 
-type View = 'anasayfa' | 'envanter' | 'finansal' | 'cari' | 'restoran' | 'kasa' | 'raporlar' | 'uyarilar' | 'yapay-zeka';
+type View = 
+  'anasayfa' | 
+  'urun-yonetimi' | 
+  'musteri-yonetimi' | 
+  'satis-islemleri' |
+  'tedarikciler' |
+  'personel' |
+  'kampanyalar' |
+  'mali-isler' | 
+  'raporlar' |
+  'kasa' | 
+  'uyarilar' | 
+  'yapay-zeka';
 
 const viewTitles: Record<View, string> = {
   anasayfa: 'Anasayfa',
-  envanter: 'Envanter Yönetimi',
-  finansal: 'Finansal Durum',
-  cari: 'Müşteriler',
-  restoran: 'Restoran Satışları',
-  kasa: 'Kasa Yönetimi',
+  'urun-yonetimi': 'Ürün Yönetimi',
+  'musteri-yonetimi': 'Müşteri Yönetimi',
+  'satis-islemleri': 'Satış İşlemleri',
+  tedarikciler: 'Tedarikçiler',
+  personel: 'Personel',
+  kampanyalar: 'Kampanyalar',
+  'mali-isler': 'Mali İşler',
   raporlar: 'Raporlar',
+  kasa: 'Kasa Yönetimi',
   uyarilar: 'Uyarılar',
   'yapay-zeka': 'Yapay Zeka Asistanı'
 };
@@ -289,7 +320,7 @@ export default function DashboardPage() {
     switch (activeView) {
       case 'anasayfa':
         return <Dashboard customers={customers} expenses={expenses} salesData={salesData} />;
-      case 'envanter':
+      case 'urun-yonetimi':
         return <Inventory 
                   products={products} 
                   stockAdjustments={stockAdjustments}
@@ -300,7 +331,7 @@ export default function DashboardPage() {
                   onUpdateStockAdjustment={handleUpdateStockAdjustment}
                   onDeleteStockAdjustment={handleDeleteStockAdjustment}
                 />;
-      case 'finansal':
+      case 'mali-isler':
         return <Financials 
                   orders={orders.filter(o => o.customerId !== 'CASH_SALE')}
                   customers={customers}
@@ -312,7 +343,7 @@ export default function DashboardPage() {
                   onUpdateExpense={handleUpdateExpense}
                   onDeleteExpense={handleDeleteExpense}
                 />;
-      case 'cari':
+      case 'musteri-yonetimi':
         return <Customers 
                   customers={customers}
                   orders={orders}
@@ -321,8 +352,14 @@ export default function DashboardPage() {
                   onDeleteCustomer={handleDeleteCustomer}
                   onAddPayment={handleAddPayment}
                />;
-      case 'restoran':
-        return <Restaurant cashSales={orders.filter(o => o.customerId === 'CASH_SALE')} />;
+      case 'satis-islemleri':
+        return <SalesTransactions />;
+      case 'tedarikciler':
+        return <Suppliers />;
+      case 'personel':
+        return <Staff />;
+      case 'kampanyalar':
+        return <Campaigns />;
       case 'kasa':
         return <Cashbox 
                   history={cashboxHistory}
@@ -389,52 +426,72 @@ export default function DashboardPage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('envanter')}
-                isActive={activeView === 'envanter'}
-                tooltip="Envanter"
+                onClick={() => setActiveView('urun-yonetimi')}
+                isActive={activeView === 'urun-yonetimi'}
+                tooltip="Ürün Yönetimi"
               >
                 <Package />
-                <span>Envanter</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => setActiveView('finansal')}
-                isActive={activeView === 'finansal'}
-                tooltip="Finansal"
-              >
-                <Banknote />
-                <span>Finansal</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => setActiveView('cari')}
-                isActive={activeView === 'cari'}
-                tooltip="Müşteriler"
-              >
-                <BookUser />
-                <span>Müşteriler</span>
+                <span>Ürün Yönetimi</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('restoran')}
-                isActive={activeView === 'restoran'}
-                tooltip="Restoran"
+                onClick={() => setActiveView('musteri-yonetimi')}
+                isActive={activeView === 'musteri-yonetimi'}
+                tooltip="Müşteri Yönetimi"
               >
-                <UtensilsCrossed />
-                <span>Restoran</span>
+                <BookUser />
+                <span>Müşteri Yönetimi</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('kasa')}
-                isActive={activeView === 'kasa'}
-                tooltip="Kasa"
+                onClick={() => setActiveView('satis-islemleri')}
+                isActive={activeView === 'satis-islemleri'}
+                tooltip="Satış İşlemleri"
               >
-                <Wallet />
-                <span>Kasa</span>
+                <ShoppingCart />
+                <span>Satış İşlemleri</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('tedarikciler')}
+                isActive={activeView === 'tedarikciler'}
+                tooltip="Tedarikçiler"
+              >
+                <Truck />
+                <span>Tedarikçiler</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('personel')}
+                isActive={activeView === 'personel'}
+                tooltip="Personel"
+              >
+                <Users />
+                <span>Personel</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('kampanyalar')}
+                isActive={activeView === 'kampanyalar'}
+                tooltip="Kampanyalar"
+              >
+                <Megaphone />
+                <span>Kampanyalar</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('mali-isler')}
+                isActive={activeView === 'mali-isler'}
+                tooltip="Mali İşler"
+              >
+                <Banknote />
+                <span>Mali İşler</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
@@ -445,6 +502,16 @@ export default function DashboardPage() {
               >
                 <AreaChart />
                 <span>Raporlar</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('kasa')}
+                isActive={activeView === 'kasa'}
+                tooltip="Kasa"
+              >
+                <Wallet />
+                <span>Kasa</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

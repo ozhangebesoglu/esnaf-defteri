@@ -1,14 +1,16 @@
 'use server';
 /**
- * @fileOverview A conversational AI assistant for the Esnaf Defteri app that can understand and execute commands by calling tools that interact with the database.
+ * @fileOverview A conversational AI assistant for the Esnaf Defteri app that can understand and execute commands by calling tools that interact with the database. It maintains a persistent memory of the conversation.
  *
- * - chatWithAssistant - A function that handles the conversation and tool execution.
+ * - chatWithAssistant - A function that handles the stateful conversation and tool execution.
  * - ChatWithAssistantInput - The input type for the chatWithAssistant function.
  * - ChatWithAssistantOutput - The return type for the chatWithAssistant function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import {
   addPaymentTool,
   addSaleTool,
@@ -22,6 +24,7 @@ import {
   deleteExpenseTool,
   deleteStockAdjustmentTool,
 } from '@/ai/tools/esnaf-tools';
+import type { Message } from '@/lib/types';
 
 const allTools = [
     addSaleTool,
@@ -38,15 +41,8 @@ const allTools = [
 ];
 
 const ChatWithAssistantInputSchema = z.object({
-  chatHistory: z
-    .array(
-      z.object({
-        role: z.enum(['user', 'model', 'tool']),
-        content: z.any(),
-      })
-    )
-    .describe('The history of the conversation so far, including the latest user message.'),
-   userId: z.string().describe("The user's Firebase UID.")
+  newMessage: z.string().describe('The latest message from the user.'),
+  userId: z.string().describe("The user's Firebase UID.")
 });
 export type ChatWithAssistantInput = z.infer<typeof ChatWithAssistantInputSchema>;
 
@@ -64,63 +60,96 @@ Kullanıcı bir işlem yapmak istediğinde (örneğin, "Ahmet Yılmaz'a 500 lira
 Eğer bir müşteri veya ürün adı belirsizse ya da bulunamazsa, kibarca kullanıcıdan ismi kontrol etmesini veya yeni bir kayıt eklemek isteyip istemediğini sor.
 "addSale" aracını sadece veresiye (borç) satışlar için kullanmalısın. Peşin satışlar için "addCashSale" aracını kullan.
 Kullanıcı senden bilgi istiyorsa (örneğin, "Ahmet'in ne kadar borcu var?"), şu an için bu bilgiye erişimin olmadığını, ancak gelecekte bu özelliğin ekleneceğini belirt.
-İşlem başarılı olduğunda veya bir hata oluştuğunda, aracın döndürdüğü mesajı temel alarak kullanıcıyı mutlaka bilgilendir.
+Bir aracı çalıştırdıktan sonra, aracın döndürdüğü sonucu temel alarak kullanıcıyı mutlaka doğal bir dilde bilgilendir. Örneğin, "Elbette, Ahmet Yılmaz için 250 TL'lik satış başarıyla eklendi." gibi.
 Unutma, her araç 'userId' parametresine ihtiyaç duyar, bu bilgiyi her zaman sağla.`;
+
+const welcomeMessage: Message = {
+    role: 'model',
+    content: 'Merhaba! Ben Esnaf Defteri asistanınızım. "Ahmet Yılmaz\'a 250 liralık satış ekle" gibi komutlar verebilir veya "Yeni müşteri ekle: Adı Canan Güneş" gibi işlemler yapabilirsiniz.',
+};
 
 export async function chatWithAssistant(
   input: ChatWithAssistantInput
 ): Promise<ChatWithAssistantOutput> {
-  const {chatHistory, userId} = input;
+  const { newMessage, userId } = input;
+  const historyRef = doc(db, 'chatHistories', userId);
 
-  // The Gemini API requires the conversation history to start with a 'user' role.
-  const validChatHistory =
-    chatHistory.length > 0 && chatHistory[0].role === 'model'
-      ? chatHistory.slice(1)
-      : chatHistory;
-      
-  const messages = validChatHistory.map(m => {
-    if (m.role === 'user' || m.role === 'model') {
-        return { role: m.role, content: [{ text: m.content as string }] };
-    }
-    // Handle tool role if needed, though for this simple flow, we might not pass it back
-    return m;
-  }) as any;
+  // 1. Load history
+  const historySnap = await getDoc(historyRef);
+  let chatHistory: Message[] = historySnap.exists()
+    ? historySnap.data().messages
+    : [welcomeMessage];
 
+  // 2. Append new user message
+  chatHistory.push({ role: 'user', content: newMessage });
+  
+  // 3. Start conversation loop
+  const initialMessages = chatHistory.map(m => ({
+    role: m.role,
+    content: [{ text: m.content as string }],
+  })).filter(m => m.role !== 'tool');
 
   const llmResponse = await ai.generate({
     model: ai.model,
-    messages: messages,
+    messages: initialMessages,
     system: systemPrompt,
     tools: allTools,
   });
 
+  let finalResponse = '';
+
   const toolRequest = llmResponse.toolRequest;
-
   if (toolRequest) {
-    // The model wants to call a tool.
-    const toolCall = toolRequest.calls[0]; // Assuming one tool call for simplicity
-    const tool = allTools.find(t => t.name === toolCall.name);
+    // A tool has been requested
+    chatHistory.push({ role: 'model', content: llmResponse.content as any });
 
-    if (tool) {
-      // Inject the userId into the tool's input
-      const toolInputWithUser = { ...toolCall.input, userId };
-      
-      // Execute the tool. The tool itself now contains all logic and returns a user-facing string.
-      const toolResult = await tool.fn(toolInputWithUser);
-      
-      // For this simplified flow, we will return the tool's result directly to the user
-      // instead of re-prompting the LLM with the tool's output.
-      // This is efficient and sufficient for action-oriented tools.
-      return {
-        textResponse: toolResult,
-      };
-    } else {
-        return { textResponse: `İstenen araç bulunamadı: ${toolCall.name}` };
+    const toolResponses = [];
+    for (const call of toolRequest.calls) {
+      const tool = allTools.find(t => t.name === call.name);
+      if (tool) {
+        const toolInputWithUser = { ...call.input, userId };
+        const output = await tool.fn(toolInputWithUser);
+        toolResponses.push({ toolCallId: call.toolCallId, output });
+      }
     }
+
+    chatHistory.push({ role: 'tool', content: toolResponses });
+
+    // Map the full history for the final prompt
+    const finalGenkitMessages = chatHistory.map(m => {
+        if (m.role === 'user') return { role: 'user', content: [{ text: m.content as string }] };
+        if (m.role === 'model') {
+            const modelContent = m.content as any;
+            if (modelContent.toolRequest) {
+                return { role: 'model', content: [modelContent] };
+            }
+            return { role: 'model', content: [{ text: m.content as string }] };
+        }
+        if (m.role === 'tool') {
+            const toolContent = m.content as Array<{ toolCallId: string; output: any }>;
+            return { role: 'tool', content: toolContent.map(tc => ({ toolResponse: tc })) };
+        }
+        return m;
+    });
+
+    const finalLlmResponse = await ai.generate({
+        model: ai.model,
+        messages: finalGenkitMessages as any,
+        system: systemPrompt,
+        tools: allTools,
+    });
+    
+    finalResponse = finalLlmResponse.text;
+    chatHistory.push({ role: 'model', content: finalResponse });
+  } else {
+    // No tool call, just a text response
+    finalResponse = llmResponse.text;
+    chatHistory.push({ role: 'model', content: finalResponse });
   }
 
-  // If no tool was called, just return the text response
-  return {
-    textResponse: llmResponse.text,
-  };
+  // 4. Save updated history
+  await setDoc(historyRef, { userId, messages: chatHistory });
+
+  // 5. Return final response
+  return { textResponse: finalResponse };
 }

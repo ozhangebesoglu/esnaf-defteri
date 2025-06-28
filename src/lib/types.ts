@@ -80,3 +80,12 @@ export type Staff = FirestoreDoc & {
   salary: number;
   phone?: string;
 };
+
+export type Message = {
+  role: 'user' | 'model' | 'tool';
+  content: any; // string for user/model text, complex object for tool calls/responses
+};
+
+export type ChatHistory = FirestoreDoc & {
+  messages: Message[];
+};

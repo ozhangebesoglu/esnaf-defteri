@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Bot, Loader2, Send, User } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
 
 import { useAuth } from '@/contexts/auth-context';
 import { chatWithAssistant } from '@/ai/flows/assistant-flow';
@@ -15,29 +16,26 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-
-
-export type Message = {
-    role: 'user' | 'model' | 'tool';
-    content: any; // Can be string or tool content
-};
+import type { Message } from '@/lib/types';
+import { db } from '@/lib/firebase';
 
 
 const formSchema = z.object({
   message: z.string().min(1, 'Mesaj boş olamaz.'),
 });
 
+const defaultWelcomeMessage: Message = {
+    role: 'model',
+    content: 'Merhaba! Ben Esnaf Defteri asistanınızım. "Ahmet Yılmaz\'a 250 liralık satış ekle" gibi komutlar verebilir veya "Yeni müşteri ekle: Adı Canan Güneş" gibi işlemler yapabilirsiniz.',
+};
+
 
 export default function AiChat() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [chatHistory, setChatHistory] = useState<Message[]>([
-    {
-      role: 'model',
-      content: 'Merhaba! Ben Esnaf Defteri asistanınızım. "Ahmet Yılmaz\'a 250 liralık satış ekle" gibi komutlar verebilir veya "Yeni müşteri ekle: Adı Canan Güneş" gibi işlemler yapabilirsiniz.',
-    },
-  ]);
+  const [chatHistory, setChatHistory] = useState<Message[]>([defaultWelcomeMessage]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -45,7 +43,25 @@ export default function AiChat() {
       message: '',
     },
   });
+
+  // Load chat history from Firestore on component mount
+  useEffect(() => {
+    if (!user) return;
+    const loadHistory = async () => {
+      setIsHistoryLoading(true);
+      const historyRef = doc(db, 'chatHistories', user.uid);
+      const historySnap = await getDoc(historyRef);
+      if (historySnap.exists()) {
+        setChatHistory(historySnap.data().messages);
+      } else {
+        setChatHistory([defaultWelcomeMessage]);
+      }
+      setIsHistoryLoading(false);
+    };
+    loadHistory();
+  }, [user]);
   
+  // Auto-scroll to the bottom of the chat
   useEffect(() => {
     if (scrollAreaRef.current) {
         scrollAreaRef.current.scrollTo({
@@ -58,24 +74,19 @@ export default function AiChat() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user) {
-        const errorMessage: Message = {
-            role: 'model',
-            content: 'Bu özelliği kullanmak için lütfen giriş yapın.',
-        };
-        setChatHistory(current => [...current, errorMessage]);
+        // This should not happen if the component is rendered, but it's good practice
         return;
     }
 
     const userMessage: Message = { role: 'user', content: values.message };
-    const newMessages = [...chatHistory, userMessage];
-    setChatHistory(newMessages);
+    setChatHistory(current => [...current, userMessage]);
     
     setIsLoading(true);
     form.reset();
 
     try {
       const response = await chatWithAssistant({
-        chatHistory: newMessages,
+        newMessage: userMessage.content,
         userId: user.uid,
       });
       
@@ -94,18 +105,25 @@ export default function AiChat() {
     }
   }
 
+  // Filter history to only show renderable messages (user and model text responses)
+  const renderableHistory = chatHistory.filter(m => typeof m.content === 'string');
+
   return (
     <Card className="h-[calc(100vh-8rem)] flex flex-col">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Bot /> Yapay Zeka Asistanı</CardTitle>
         <CardDescription>
-          İşletmenizle ilgili komutlar verin, anında gerçekleştirilsin.
+          İşletmenizle ilgili komutlar verin, anında gerçekleştirilsin. Konuşmalarınız hatırlanacaktır.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
         <ScrollArea className="flex-1 pr-4 -mr-4" ref={scrollAreaRef}>
             <div className="space-y-6">
-                {chatHistory.filter(m => m.role !== 'tool').map((message, index) => (
+                {isHistoryLoading ? (
+                  <div className="flex justify-center items-center h-full">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : renderableHistory.map((message, index) => (
                     <div key={index} className={cn("flex items-start gap-4", message.role === 'user' && 'justify-end')}>
                         {message.role === 'model' && (
                              <Avatar className="h-9 w-9 border">
@@ -143,12 +161,12 @@ export default function AiChat() {
                     render={({ field }) => (
                         <FormItem className="flex-1">
                             <FormControl>
-                                <Input placeholder="Mesajınızı buraya yazın..." {...field} disabled={isLoading} autoComplete="off" />
+                                <Input placeholder="Mesajınızı buraya yazın..." {...field} disabled={isLoading || isHistoryLoading} autoComplete="off" />
                             </FormControl>
                         </FormItem>
                     )}
                     />
-                    <Button type="submit" disabled={isLoading} size="icon">
+                    <Button type="submit" disabled={isLoading || isHistoryLoading} size="icon">
                         <Send className="h-4 w-4" />
                     </Button>
                 </form>

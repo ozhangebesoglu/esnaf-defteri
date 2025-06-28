@@ -70,6 +70,7 @@ export default function Sales() {
           <TableHeader>
             <TableRow>
               <TableHead>Sipariş No</TableHead>
+              <TableHead>Tarih</TableHead>
               <TableHead>Müşteri</TableHead>
               <TableHead className="text-right">Tutar</TableHead>
               <TableHead className="text-center">Durum</TableHead>
@@ -80,6 +81,7 @@ export default function Sales() {
             {recentOrders.map((order) => (
               <TableRow key={order.id} onClick={() => handleRowClick(order.id)} className="cursor-pointer">
                 <TableCell className="font-medium">{order.id}</TableCell>
+                <TableCell>{order.date}</TableCell>
                 <TableCell>{order.customerName}</TableCell>
                 <TableCell className="text-right font-mono">
                   {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total)}

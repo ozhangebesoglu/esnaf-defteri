@@ -127,6 +127,7 @@ export default function Reports() {
                     <TableHead>Müşteri</TableHead>
                     <TableHead>E-posta</TableHead>
                     <TableHead className="text-right">Toplam Harcama</TableHead>
+                    <TableHead className="text-right">Bakiye</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -138,6 +139,9 @@ export default function Reports() {
                             <TableCell>{customerDetails?.email}</TableCell>
                             <TableCell className="text-right font-mono font-medium">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(c.totalSpent)}
+                            </TableCell>
+                             <TableCell className={`text-right font-mono ${customerDetails && customerDetails.balance < 0 ? 'text-destructive' : ''}`}>
+                                {customerDetails && new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customerDetails.balance)}
                             </TableCell>
                         </TableRow>
                         )

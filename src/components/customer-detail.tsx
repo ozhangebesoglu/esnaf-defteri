@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, TrendingUp, TrendingDown, Scale, Pencil } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "./ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"
 import { CustomerForm } from "./customer-form"
 
 export default function CustomerDetail({ customerId, onBack }: { customerId: string, onBack: () => void }) {
@@ -127,6 +127,7 @@ export default function CustomerDetail({ customerId, onBack }: { customerId: str
             <TableHeader>
               <TableRow>
                  <TableHead>Sipariş No</TableHead>
+                 <TableHead>Tarih</TableHead>
                  <TableHead>Açıklama</TableHead>
                  <TableHead className="text-center">Durum</TableHead>
                  <TableHead className="text-right">Tutar</TableHead>
@@ -136,6 +137,7 @@ export default function CustomerDetail({ customerId, onBack }: { customerId: str
               {orders.length > 0 ? orders.map((order) => (
                 <TableRow key={order.id}>
                     <TableCell className="font-medium">{order.id}</TableCell>
+                    <TableCell>{order.date}</TableCell>
                     <TableCell>{order.description}</TableCell>
                     <TableCell className="text-center">
                         <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
@@ -146,7 +148,7 @@ export default function CustomerDetail({ customerId, onBack }: { customerId: str
                 </TableRow>
               )) : (
                  <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">Bu müşteri için sipariş bulunamadı.</TableCell>
+                    <TableCell colSpan={5} className="h-24 text-center">Bu müşteri için sipariş bulunamadı.</TableCell>
                  </TableRow>
               )}
             </TableBody>

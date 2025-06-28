@@ -6,6 +6,7 @@ export type Order = {
   items: number;
   total: number;
   status: 'Tamamlandı' | 'Bekliyor' | 'İptal Edildi';
+  date: string;
 };
 
 export type Sale = {

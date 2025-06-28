@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ArrowLeft, Pencil } from "lucide-react"
 import { Badge } from "./ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"
 import { SaleForm } from "./sale-form"
 
 export default function SaleDetail({ orderId, onBack }: { orderId: string, onBack: () => void }) {
@@ -60,7 +60,7 @@ export default function SaleDetail({ orderId, onBack }: { orderId: string, onBac
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             Sipariş #{order.id}
           </h1>
-          <p className="text-sm text-muted-foreground">Tarih: 23.10.2023</p>
+          <p className="text-sm text-muted-foreground">Tarih: {order.date}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
             <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>

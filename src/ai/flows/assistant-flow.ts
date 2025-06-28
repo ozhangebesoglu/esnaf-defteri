@@ -76,8 +76,18 @@ export async function chatWithAssistant(
 ): Promise<ChatWithAssistantOutput> {
   const {userMessage, chatHistory, appData} = input;
 
+  // The Gemini API requires the conversation history to start with a 'user' role.
+  // We filter out the initial welcome message from the model if it exists.
+  const validChatHistory =
+    chatHistory.length > 0 && chatHistory[0].role === 'model'
+      ? chatHistory.slice(1)
+      : chatHistory;
+
   const messages = [
-    ...chatHistory.map(m => ({role: m.role, content: [{text: m.content}]})),
+    ...validChatHistory.map(m => ({
+      role: m.role,
+      content: [{text: m.content}],
+    })),
     {role: 'user', content: [{text: userMessage}]},
   ];
 

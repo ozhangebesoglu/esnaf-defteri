@@ -1,11 +1,11 @@
 // src/ai/flows/categorize-stock-adjustment.ts
 'use server';
 /**
- * @fileOverview An AI agent for categorizing stock adjustments.
+ * @fileOverview Stok hareketlerini kategorize etmek için bir yapay zeka ajanı.
  *
- * - categorizeStockAdjustment - A function that categorizes stock adjustments.
- * - CategorizeStockAdjustmentInput - The input type for the categorizeStockAdjustment function.
- * - CategorizeStockAdjustmentOutput - The return type for the categorizeStockAdjustment function.
+ * - categorizeStockAdjustment - Stok hareketlerini kategorize eden bir fonksiyon.
+ * - CategorizeStockAdjustmentInput - categorizeStockAdjustment fonksiyonu için giriş türü.
+ * - CategorizeStockAdjustmentOutput - categorizeStockAdjustment fonksiyonu için dönüş türü.
  */
 
 import {ai} from '@/ai/genkit';
@@ -14,7 +14,7 @@ import {z} from 'genkit';
 const CategorizeStockAdjustmentInputSchema = z.object({
   description: z
     .string()
-    .describe('The description of the stock adjustment.'),
+    .describe('Stok hareketi açıklaması.'),
 });
 export type CategorizeStockAdjustmentInput = z.infer<
   typeof CategorizeStockAdjustmentInputSchema
@@ -24,12 +24,12 @@ const CategorizeStockAdjustmentOutputSchema = z.object({
   category: z
     .string()
     .describe(
-      'The predicted category for the stock adjustment (e.g., spoilage, theft, data entry error, etc.).'
+      'Stok hareketi için tahmin edilen kategori (örn. Bozulma, Hırsızlık, Veri Giriş Hatası, vb.).'
     ),
   confidence: z
     .number()
     .describe(
-      'A confidence score (0-1) indicating the certainty of the category prediction.'
+      'Kategori tahmininin kesinliğini gösteren bir güven skoru (0-1).'
     ),
 });
 export type CategorizeStockAdjustmentOutput = z.infer<
@@ -46,11 +46,11 @@ const prompt = ai.definePrompt({
   name: 'categorizeStockAdjustmentPrompt',
   input: {schema: CategorizeStockAdjustmentInputSchema},
   output: {schema: CategorizeStockAdjustmentOutputSchema},
-  prompt: `You are an expert inventory manager in a butcher shop. Based on the provided description, determine the most likely category for the stock adjustment and provide a confidence score (0-1). Respond in JSON format.
+  prompt: `Sen bir kasap dükkanında uzman bir envanter yöneticisisin. Sağlanan açıklamaya dayanarak, stok hareketi için en olası kategoriyi belirle ve bir güven puanı (0-1) sağla. JSON formatında yanıt ver.
 
-Description: {{{description}}}
+Açıklama: {{{description}}}
 
-Possible categories: Spoilage, Theft, Data Entry Error, Received Product Error, Discount, Other
+Olası kategoriler: Bozulma, Hırsızlık, Veri Giriş Hatası, Hatalı Ürün Alımı, İndirim, Diğer
 `,
 });
 

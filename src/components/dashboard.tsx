@@ -5,13 +5,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
-import { salesData, recentOrders } from "@/lib/data"
+import { salesData, recentOrders, customers } from "@/lib/data"
 import type { Order } from "@/lib/types"
-import { DollarSign, ShoppingCart, Users, ArrowUpRight } from "lucide-react"
+import { DollarSign, ShoppingCart, Users, TrendingUp, TrendingDown } from "lucide-react"
 
 const chartConfig = {
   revenue: {
-    label: "Revenue",
+    label: "Ciro",
     color: "hsl(var(--primary))",
   },
 }
@@ -19,48 +19,68 @@ const chartConfig = {
 export default function Dashboard() {
   const getStatusVariant = (status: Order['status']) => {
     switch (status) {
-      case 'Fulfilled':
+      case 'Tamamlandı':
         return 'default'
-      case 'Pending':
+      case 'Bekliyor':
         return 'secondary'
-      case 'Cancelled':
+      case 'İptal Edildi':
         return 'destructive'
       default:
         return 'outline'
     }
   }
 
+  const totalReceivables = customers.filter(c => c.balance > 0).reduce((acc, c) => acc + c.balance, 0);
+  const totalDebts = customers.filter(c => c.balance < 0).reduce((acc, c) => acc + c.balance, 0);
+  const receivablesCount = customers.filter(c => c.balance > 0).length;
+  const debtsCount = customers.filter(c => c.balance < 0).length;
+
+
   return (
     <div className="grid gap-6">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Toplam Ciro</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$23,845.67</div>
-            <p className="text-xs text-muted-foreground">+12.1% from last month</p>
+            <div className="text-2xl font-bold">₺23,845.67</div>
+            <p className="text-xs text-muted-foreground">geçen aydan +%12.1</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Toplam Alacak</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+782</div>
-            <p className="text-xs text-muted-foreground">+5.2% from last month</p>
+            <div className="text-2xl font-bold">
+              {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalReceivables)}
+            </div>
+            <p className="text-xs text-muted-foreground">{receivablesCount} müşteriden</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Customers</CardTitle>
+            <CardTitle className="text-sm font-medium">Toplam Borç</CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">
+             {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Math.abs(totalDebts))}
+            </div>
+            <p className="text-xs text-muted-foreground">{debtsCount} müşteriden</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Yeni Müşteriler</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">+42</div>
-            <p className="text-xs text-muted-foreground">3 since yesterday</p>
+            <p className="text-xs text-muted-foreground">dünden beri 3</p>
           </CardContent>
         </Card>
       </div>
@@ -68,8 +88,8 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Sales Overview</CardTitle>
-            <CardDescription>A chart showing revenue over the last 6 months.</CardDescription>
+            <CardTitle>Satış Özeti</CardTitle>
+            <CardDescription>Son 6 aydaki cironun grafiği.</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-64">
@@ -80,7 +100,6 @@ export default function Dashboard() {
                   tickLine={false}
                   tickMargin={10}
                   axisLine={false}
-                  tickFormatter={(value) => value.slice(0, 3)}
                 />
                 <ChartTooltip
                   cursor={false}
@@ -93,17 +112,17 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>A list of the most recent customer orders.</CardDescription>
+            <CardTitle>Son Siparişler</CardTitle>
+            <CardDescription>En son müşteri siparişlerinin listesi.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Sipariş No</TableHead>
+                  <TableHead>Müşteri</TableHead>
+                  <TableHead>Tutar</TableHead>
+                  <TableHead>Durum</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -111,7 +130,7 @@ export default function Dashboard() {
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">{order.id}</TableCell>
                     <TableCell>{order.customer}</TableCell>
-                    <TableCell>${order.total.toFixed(2)}</TableCell>
+                    <TableCell>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total)}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
                     </TableCell>

@@ -22,8 +22,8 @@ export default function Monitoring() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Business Rules Monitor</CardTitle>
-        <CardDescription>Real-time alerts for potential data integrity and compliance issues.</CardDescription>
+        <CardTitle>Uyarılar</CardTitle>
+        <CardDescription>Potansiyel veri bütünlüğü ve uyumluluk sorunları için gerçek zamanlı uyarılar.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -39,7 +39,7 @@ export default function Monitoring() {
           ))}
           {alerts.length === 0 && (
             <div className="text-center py-10">
-              <p className="text-muted-foreground">No alerts at this time. Everything looks good!</p>
+              <p className="text-muted-foreground">Şu anda uyarı yok. Her şey yolunda görünüyor!</p>
             </div>
           )}
         </div>

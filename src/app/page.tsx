@@ -12,7 +12,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Boxes, Users, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Boxes, Users, ShieldAlert, BookUser } from 'lucide-react';
 
 import Dashboard from '@/components/dashboard';
 import StockAdjustments from '@/components/stock-adjustments';
@@ -20,20 +20,27 @@ import Customers from '@/components/customers';
 import Monitoring from '@/components/monitoring';
 import { Logo } from '@/components/logo';
 
-type View = 'dashboard' | 'stock' | 'customers' | 'monitoring';
+type View = 'anasayfa' | 'stok' | 'cari' | 'uyarilar';
+
+const viewTitles: Record<View, string> = {
+  anasayfa: 'Anasayfa',
+  stok: 'Stok Hareketleri',
+  cari: 'Cari Hesaplar',
+  uyarilar: 'Uyarılar',
+};
 
 export default function Home() {
-  const [activeView, setActiveView] = useState<View>('dashboard');
+  const [activeView, setActiveView] = useState<View>('anasayfa');
 
   const renderView = () => {
     switch (activeView) {
-      case 'dashboard':
+      case 'anasayfa':
         return <Dashboard />;
-      case 'stock':
+      case 'stok':
         return <StockAdjustments />;
-      case 'customers':
+      case 'cari':
         return <Customers />;
-      case 'monitoring':
+      case 'uyarilar':
         return <Monitoring />;
       default:
         return <Dashboard />;
@@ -47,7 +54,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Logo className="w-10 h-10 text-primary" />
             <span className="font-headline text-xl font-semibold group-data-[collapsible=icon]:hidden">
-              ButcherTrack
+              Esnaf Defteri
             </span>
           </div>
         </SidebarHeader>
@@ -55,42 +62,42 @@ export default function Home() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('dashboard')}
-                isActive={activeView === 'dashboard'}
-                tooltip="Dashboard"
+                onClick={() => setActiveView('anasayfa')}
+                isActive={activeView === 'anasayfa'}
+                tooltip="Anasayfa"
               >
                 <LayoutDashboard />
-                <span>Dashboard</span>
+                <span>Anasayfa</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('stock')}
-                isActive={activeView === 'stock'}
-                tooltip="Stock"
+                onClick={() => setActiveView('stok')}
+                isActive={activeView === 'stok'}
+                tooltip="Stok"
               >
                 <Boxes />
-                <span>Stock Adjustments</span>
+                <span>Stok Hareketleri</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('customers')}
-                isActive={activeView === 'customers'}
-                tooltip="Customers"
+                onClick={() => setActiveView('cari')}
+                isActive={activeView === 'cari'}
+                tooltip="Cari Hesaplar"
               >
-                <Users />
-                <span>Customers</span>
+                <BookUser />
+                <span>Cari Hesaplar</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('monitoring')}
-                isActive={activeView === 'monitoring'}
-                tooltip="Monitoring"
+                onClick={() => setActiveView('uyarilar')}
+                isActive={activeView === 'uyarilar'}
+                tooltip="Uyarılar"
               >
                 <ShieldAlert />
-                <span>Monitoring</span>
+                <span>Uyarılar</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -99,7 +106,7 @@ export default function Home() {
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
           <SidebarTrigger className="md:hidden" />
-          <h1 className="text-xl font-headline font-semibold capitalize">{activeView === 'stock' ? 'Stock Adjustments' : activeView}</h1>
+          <h1 className="text-xl font-headline font-semibold capitalize">{viewTitles[activeView]}</h1>
         </header>
         <main className="flex-1 p-4 md:p-6">{renderView()}</main>
       </SidebarInset>

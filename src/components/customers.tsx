@@ -17,8 +17,8 @@ import { customers } from "@/lib/data"
 import type { Customer } from "@/lib/types"
 
 const customerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters."),
-  email: z.string().email("Invalid email address."),
+  name: z.string().min(2, "İsim en az 2 karakter olmalıdır."),
+  email: z.string().email("Geçersiz e-posta adresi."),
   balance: z.coerce.number().optional(),
 })
 
@@ -32,8 +32,8 @@ function CustomerForm({ customer, setOpen }: { customer?: Customer, setOpen: (op
   function onSubmit(values: z.infer<typeof customerSchema>) {
     console.log(values)
     toast({
-      title: `Customer ${customer ? 'Updated' : 'Added'}`,
-      description: `${values.name} has been saved.`,
+      title: `Müşteri ${customer ? 'Güncellendi' : 'Eklendi'}`,
+      description: `${values.name} adlı müşteri kaydedildi.`,
     })
     setOpen(false)
   }
@@ -46,8 +46,8 @@ function CustomerForm({ customer, setOpen }: { customer?: Customer, setOpen: (op
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full Name</FormLabel>
-              <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+              <FormLabel>Ad Soyad</FormLabel>
+              <FormControl><Input placeholder="Ahmet Yılmaz" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -57,8 +57,8 @@ function CustomerForm({ customer, setOpen }: { customer?: Customer, setOpen: (op
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email Address</FormLabel>
-              <FormControl><Input type="email" placeholder="john.d@example.com" {...field} /></FormControl>
+              <FormLabel>E-posta Adresi</FormLabel>
+              <FormControl><Input type="email" placeholder="ahmet.y@ornek.com" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -68,14 +68,14 @@ function CustomerForm({ customer, setOpen }: { customer?: Customer, setOpen: (op
           name="balance"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Current Balance</FormLabel>
+              <FormLabel>Mevcut Bakiye</FormLabel>
               <FormControl><Input type="number" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         <DialogFooter>
-          <Button type="submit">Save Customer</Button>
+          <Button type="submit">Müşteriyi Kaydet</Button>
         </DialogFooter>
       </form>
     </Form>
@@ -96,21 +96,21 @@ export default function Customers() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Customer Balances</CardTitle>
-          <CardDescription>View and manage customer account balances.</CardDescription>
+          <CardTitle>Cari Hesaplar</CardTitle>
+          <CardDescription>Müşteri borç ve alacaklarını yönetin.</CardDescription>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => handleOpenDialog()}>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add Customer
+              Müşteri Ekle
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>{selectedCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
+              <DialogTitle>{selectedCustomer ? 'Müşteriyi Düzenle' : 'Yeni Müşteri Ekle'}</DialogTitle>
               <DialogDescription>
-                {selectedCustomer ? `Update details for ${selectedCustomer.name}.` : 'Add a new customer to your records.'}
+                {selectedCustomer ? `Detayları ${selectedCustomer.name} için güncelle.` : 'Kayıtlarınıza yeni bir müşteri ekleyin.'}
               </DialogDescription>
             </DialogHeader>
             <CustomerForm customer={selectedCustomer} setOpen={setOpen} />
@@ -121,9 +121,9 @@ export default function Customers() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead className="text-right">Balance</TableHead>
+              <TableHead>Ad Soyad</TableHead>
+              <TableHead>E-posta</TableHead>
+              <TableHead className="text-right">Bakiye</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -133,7 +133,7 @@ export default function Customers() {
                 <TableCell className="font-medium">{customer.name}</TableCell>
                 <TableCell>{customer.email}</TableCell>
                 <TableCell className={`text-right font-mono ${customer.balance < 0 ? 'text-destructive' : ''}`}>
-                  ${customer.balance.toFixed(2)}
+                  {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customer.balance)}
                 </TableCell>
                 <TableCell>
                   <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(customer)}>

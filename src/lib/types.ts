@@ -3,7 +3,7 @@ export type Order = {
   customer: string;
   items: number;
   total: number;
-  status: 'Fulfilled' | 'Pending' | 'Cancelled';
+  status: 'Tamamlandı' | 'Bekliyor' | 'İptal Edildi';
 };
 
 export type Sale = {
@@ -16,7 +16,7 @@ export type StockAdjustment = {
   product: string;
   quantity: number;
   reason: string;
-  category: 'Spoilage' | 'Theft' | 'Data Entry Error' | 'Received Product Error' | 'Discount' | 'Other';
+  category: 'Bozulma' | 'Hırsızlık' | 'Veri Giriş Hatası' | 'Hatalı Ürün Alımı' | 'İndirim' | 'Diğer';
   date: string;
 };
 

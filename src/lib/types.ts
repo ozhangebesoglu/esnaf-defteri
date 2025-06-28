@@ -1,5 +1,10 @@
-export type Order = {
-  id: string;
+
+export type FirestoreDoc = {
+    id: string;
+    userId: string;
+}
+
+export type Order = FirestoreDoc & {
   customerId: string;
   customerName: string; 
   description: string;
@@ -14,8 +19,7 @@ export type Sale = {
   revenue: number;
 };
 
-export type StockAdjustment = {
-  id: string;
+export type StockAdjustment = FirestoreDoc & {
   productId: string;
   productName: string;
   quantity: number;
@@ -24,8 +28,7 @@ export type StockAdjustment = {
   date: string;
 };
 
-export type Customer = {
-  id: string;
+export type Customer = FirestoreDoc & {
   name: string;
   email?: string;
   balance: number;
@@ -39,8 +42,7 @@ export type MonitoringAlert = {
   timestamp: string;
 };
 
-export type Product = {
-  id: string;
+export type Product = FirestoreDoc & {
   name: string;
   type: 'beef' | 'processed' | 'chicken' | 'dairy';
   stock: number;
@@ -49,16 +51,14 @@ export type Product = {
   lowStockThreshold: number;
 };
 
-export type Expense = {
-  id: string;
+export type Expense = FirestoreDoc & {
   date: string;
   description: string;
   category: 'Kira' | 'Fatura' | 'Malzeme' | 'Maaş' | 'Diğer';
   amount: number;
 };
 
-export type CashboxHistory = {
-  id: string;
+export type CashboxHistory = FirestoreDoc & {
   date: string;
   opening: number;
   cashIn: number;
@@ -67,16 +67,14 @@ export type CashboxHistory = {
   difference: number;
 };
 
-export type Supplier = {
-  id: string;
+export type Supplier = FirestoreDoc & {
   name: string;
   contactPerson?: string;
   phone?: string;
   email?: string;
 };
 
-export type Staff = {
-  id: string;
+export type Staff = FirestoreDoc & {
   name: string;
   position: string;
   salary: number;

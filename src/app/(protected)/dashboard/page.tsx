@@ -1,6 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/auth-context';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+
 import {
   Sidebar,
   SidebarHeader,
@@ -23,7 +27,8 @@ import {
   ShoppingCart,
   Truck,
   Users,
-  Megaphone
+  Megaphone,
+  Loader2
 } from 'lucide-react';
 
 import Dashboard from '@/components/dashboard';
@@ -41,16 +46,8 @@ import Staff from '@/components/staff';
 import Campaigns from '@/components/campaigns';
 
 import { 
-  initialCustomers, 
-  initialExpenses, 
-  initialOrders, 
-  initialProducts, 
-  initialStockAdjustments,
-  initialCashboxHistory,
-  initialAlerts,
-  initialSuppliers,
-  initialStaff,
-  salesData
+  salesData,
+  initialAlerts, // Keep alerts as mock data for now
 } from '@/lib/data';
 import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert, Supplier, Staff as StaffType } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
@@ -84,10 +81,6 @@ const viewTitles: Record<View, string> = {
   'yapay-zeka': 'Yapay Zeka Asistanı'
 };
 
-// A simple ID generator
-const generateId = (prefix: string) => `${prefix}${Math.random().toString(36).substr(2, 9)}`;
-
-// Date helper
 const isToday = (date: string | Date) => {
   const today = new Date();
   const someDate = new Date(date);
@@ -97,19 +90,23 @@ const isToday = (date: string | Date) => {
 }
 
 export default function DashboardPage() {
-  const [activeView, setActiveView] = useState<View>('anasayfa');
+  const { user } = useAuth();
   const { toast } = useToast();
+  
+  const [activeView, setActiveView] = useState<View>('anasayfa');
+  const [loadingData, setLoadingData] = useState(true);
 
-  // In-memory state management
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
-  const [stockAdjustments, setStockAdjustments] = useState<StockAdjustment[]>(initialStockAdjustments);
-  const [cashboxHistory, setCashboxHistory] = useState<CashboxHistory[]>(initialCashboxHistory);
+  // Firestore-backed state
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [stockAdjustments, setStockAdjustments] = useState<StockAdjustment[]>([]);
+  const [cashboxHistory, setCashboxHistory] = useState<CashboxHistory[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [staff, setStaff] = useState<StaffType[]>([]);
   const [alerts, setAlerts] = useState<MonitoringAlert[]>(initialAlerts);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
-  const [staff, setStaff] = useState<StaffType[]>(initialStaff);
+  
   const [chatHistory, setChatHistory] = useState<Message[]>([
     {
       role: 'model',
@@ -117,25 +114,62 @@ export default function DashboardPage() {
     },
   ]);
 
-
-  // --- Handlers ---
-  
-  // Customers
-  const handleAddCustomer = (data: { name: string; email?: string; initialDebt?: number }) => {
-    const newId = generateId('CUS');
-    const newCustomer: Customer = { 
-        id: newId, 
-        name: data.name, 
-        email: data.email, 
-        balance: data.initialDebt || 0 
+  // --- Firestore Data Fetching ---
+  useEffect(() => {
+    if (!user) return;
+    
+    setLoadingData(true);
+    const collections = {
+        customers: setCustomers,
+        products: setProducts,
+        orders: setOrders,
+        expenses: setExpenses,
+        stockAdjustments: setStockAdjustments,
+        cashboxHistory: setCashboxHistory,
+        suppliers: setSuppliers,
+        staff: setStaff,
     };
 
-    setCustomers(prev => [...prev, newCustomer]);
+    const unsubscribes = Object.entries(collections).map(([collectionName, setState]) => {
+        const q = query(collection(db, collectionName), where("userId", "==", user.uid));
+        return onSnapshot(q, (querySnapshot) => {
+            const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+            if (collectionName === 'orders' || collectionName === 'expenses' || collectionName === 'cashboxHistory') {
+              items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            }
+            setState(items);
+        });
+    });
+    
+    setLoadingData(false);
+
+    // Cleanup listeners on component unmount
+    return () => unsubscribes.forEach(unsub => unsub());
+
+  }, [user]);
+  
+  // --- Handlers ---
+  const getCollectionRef = (collectionName: string) => collection(db, collectionName);
+
+  // Customers
+  const handleAddCustomer = async (data: { name: string; email?: string; initialDebt?: number }) => {
+    if(!user) return;
+    const batch = writeBatch(db);
+    
+    const newCustomerRef = doc(getCollectionRef('customers'));
+    const newCustomerData = { 
+        userId: user.uid,
+        name: data.name, 
+        email: data.email || '', 
+        balance: data.initialDebt || 0 
+    };
+    batch.set(newCustomerRef, newCustomerData);
 
     if (data.initialDebt && data.initialDebt > 0) {
-        const newOrder: Order = {
-            id: generateId('ORD'),
-            customerId: newId,
+        const newOrderRef = doc(getCollectionRef('orders'));
+        const newOrderData = {
+            userId: user.uid,
+            customerId: newCustomerRef.id,
             customerName: data.name,
             date: new Date().toISOString(),
             status: 'Tamamlandı',
@@ -143,179 +177,235 @@ export default function DashboardPage() {
             description: 'Başlangıç Bakiyesi / Devir',
             total: data.initialDebt,
         };
-        setOrders(prev => [newOrder, ...prev]);
+        batch.set(newOrderRef, newOrderData);
     }
     
-    toast({ title: "Müşteri Eklendi", description: `${newCustomer.name} başarıyla eklendi.` });
+    await batch.commit();
+    toast({ title: "Müşteri Eklendi", description: `${data.name} başarıyla eklendi.` });
   };
-  const handleUpdateCustomer = (data: Customer) => {
-    setCustomers(prev => prev.map(c => c.id === data.id ? data : c));
+  const handleUpdateCustomer = async (data: Customer) => {
+    const { id, ...customerData } = data;
+    await updateDoc(doc(db, "customers", id), customerData);
     toast({ title: "Müşteri Güncellendi", description: `${data.name} bilgileri güncellendi.` });
   };
-  const handleDeleteCustomer = (id: string) => {
-    setCustomers(prev => prev.filter(c => c.id !== id));
+  const handleDeleteCustomer = async (id: string) => {
+    await deleteDoc(doc(db, "customers", id));
     toast({ title: "Müşteri Silindi", description: "Müşteri başarıyla silindi.", variant: "destructive" });
   };
 
   // Products
-  const handleAddProduct = (data: Omit<Product, 'id' | 'stock'>) => {
-    const newProduct: Product = { ...data, id: generateId('PROD'), stock: 0 };
-    setProducts(prev => [...prev, newProduct]);
+  const handleAddProduct = async (data: Omit<Product, 'id' | 'stock' | 'userId'>) => {
+     if(!user) return;
+    const newProduct = { ...data, stock: 0, userId: user.uid };
+    const docRef = await addDoc(getCollectionRef('products'), newProduct);
     toast({ title: "Ürün Eklendi", description: `${newProduct.name} başarıyla eklendi.` });
   };
-  const handleUpdateProduct = (data: Product) => {
-    setProducts(prev => prev.map(p => p.id === data.id ? data : p));
+  const handleUpdateProduct = async (data: Product) => {
+    const { id, ...productData } = data;
+    await updateDoc(doc(db, "products", id), productData);
     toast({ title: "Ürün Güncellendi", description: `${data.name} bilgileri güncellendi.` });
   };
-  const handleDeleteProduct = (id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
+  const handleDeleteProduct = async (id: string) => {
+    await deleteDoc(doc(db, "products", id));
     toast({ title: "Ürün Silindi", description: "Ürün başarıyla silindi.", variant: "destructive" });
   };
 
   // Sales (Orders)
-  const handleAddSale = (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items'>) => {
+  const handleAddSale = async (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items' | 'userId'>) => {
+    if(!user) return;
     const customer = customers.find(c => c.id === data.customerId);
     if (!customer) return;
 
-    const newOrder: Order = {
+    const newOrder = {
       ...data,
-      id: generateId('ORD'),
+      userId: user.uid,
       customerName: customer.name,
       date: new Date().toISOString(),
-      status: 'Tamamlandı',
+      status: 'Tamamlandı' as const,
       items: data.description.split(',').length,
     };
     
-    setOrders(prev => [newOrder, ...prev]);
-    setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, balance: c.balance + data.total } : c));
+    const batch = writeBatch(db);
+    
+    const orderRef = doc(getCollectionRef('orders'));
+    batch.set(orderRef, newOrder);
+    
+    const customerRef = doc(db, "customers", customer.id);
+    batch.update(customerRef, { balance: customer.balance + data.total });
+    
+    await batch.commit();
     toast({ title: "Satış Eklendi", description: "Yeni satış kaydı oluşturuldu." });
   };
-   const handleAddPayment = (data: { customerId: string, total: number, description: string }) => {
+
+   const handleAddPayment = async (data: { customerId: string, total: number, description: string }) => {
+    if(!user) return;
     const customer = customers.find(c => c.id === data.customerId);
     if (!customer) return;
 
-    const newPayment: Order = {
-      id: generateId('PAY'),
+    const newPayment = {
+      userId: user.uid,
       customerId: data.customerId,
       customerName: customer.name,
       description: data.description || 'Nakit Ödeme',
       items: 1,
       total: -data.total,
-      status: 'Tamamlandı',
+      status: 'Tamamlandı' as const,
       date: new Date().toISOString(),
     };
     
-    setOrders(prev => [newPayment, ...prev]);
-    setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, balance: c.balance - data.total } : c));
+    const batch = writeBatch(db);
+    
+    const paymentRef = doc(getCollectionRef('orders'));
+    batch.set(paymentRef, newPayment);
+
+    const customerRef = doc(db, "customers", customer.id);
+    batch.update(customerRef, { balance: customer.balance - data.total });
+
+    await batch.commit();
     toast({ title: "Ödeme Alındı", description: `${customer.name} için ödeme kaydedildi.` });
   };
-  const handleUpdateSale = (data: Order) => {
-    setOrders(prev => prev.map(o => o.id === data.id ? data : o));
+  const handleUpdateSale = async (data: Order) => {
+    const { id, ...orderData } = data;
+    await updateDoc(doc(db, 'orders', id), orderData);
     toast({ title: "Satış Güncellendi", description: `${data.id} numaralı satış güncellendi.` });
   };
-  const handleDeleteSale = (id: string) => {
+  const handleDeleteSale = async (id: string) => {
     const orderToDelete = orders.find(o => o.id === id);
-    if (!orderToDelete) return;
+    if (!orderToDelete || !user) return;
+    
+    const batch = writeBatch(db);
+    
+    const orderRef = doc(db, 'orders', id);
+    batch.delete(orderRef);
 
     if(orderToDelete.customerId !== 'CASH_SALE') {
-        setCustomers(prev => prev.map(c => c.id === orderToDelete.customerId ? { ...c, balance: c.balance - orderToDelete.total } : c));
+        const customer = customers.find(c => c.id === orderToDelete.customerId);
+        if (customer) {
+            const customerRef = doc(db, "customers", customer.id);
+            batch.update(customerRef, { balance: customer.balance - orderToDelete.total });
+        }
     }
-
-    setOrders(prev => prev.filter(o => o.id !== id));
+    
+    await batch.commit();
     toast({ title: "İşlem Silindi", description: "Satış veya ödeme kaydı silindi.", variant: "destructive" });
   };
 
   // Cash Sales
-  const handleAddCashSale = (data: { description: string, total: number }) => {
-    const newOrder: Order = {
-      id: generateId('CSH'),
+  const handleAddCashSale = async (data: { description: string, total: number }) => {
+    if(!user) return;
+    const newOrder = {
+      userId: user.uid,
       customerId: 'CASH_SALE',
       customerName: 'Peşin Satış',
       date: new Date().toISOString(),
-      status: 'Tamamlandı',
+      status: 'Tamamlandı' as const,
       items: data.description.split(',').length,
       description: data.description,
       total: data.total,
     };
     
-    setOrders(prev => [newOrder, ...prev]);
+    await addDoc(getCollectionRef('orders'), newOrder);
     toast({ title: "Peşin Satış Eklendi", description: "Yeni peşin satış kaydı oluşturuldu." });
   };
 
   // Expenses
-  const handleAddExpense = (data: Omit<Expense, 'id' | 'date'>) => {
-    const newExpense: Expense = { ...data, id: generateId('EXP'), date: new Date().toISOString() };
-    setExpenses(prev => [newExpense, ...prev]);
+  const handleAddExpense = async (data: Omit<Expense, 'id' | 'date' | 'userId'>) => {
+    if(!user) return;
+    const newExpense = { ...data, date: new Date().toISOString(), userId: user.uid };
+    await addDoc(getCollectionRef('expenses'), newExpense);
     toast({ title: "Gider Eklendi", description: "Yeni gider kaydı oluşturuldu." });
   };
-  const handleUpdateExpense = (data: Expense) => {
-    setExpenses(prev => prev.map(e => e.id === data.id ? data : e));
+  const handleUpdateExpense = async (data: Expense) => {
+    const { id, ...expenseData } = data;
+    await updateDoc(doc(db, 'expenses', id), expenseData);
     toast({ title: "Gider Güncellendi" });
   };
-  const handleDeleteExpense = (id: string) => {
-    setExpenses(prev => prev.filter(e => e.id !== id));
+  const handleDeleteExpense = async (id: string) => {
+    await deleteDoc(doc(db, 'expenses', id));
     toast({ title: "Gider Silindi", variant: "destructive" });
   };
 
   // Stock Adjustments
-  const handleAddStockAdjustment = (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => {
+  const handleAddStockAdjustment = async (data: Omit<StockAdjustment, 'id' | 'productName' | 'date' | 'userId'>) => {
+    if(!user) return;
     const product = products.find(p => p.id === data.productId);
     if (!product) return;
-
-    const newAdjustment: StockAdjustment = { 
-      ...data, 
-      id: generateId('ADJ'), 
+    
+    const newAdjustment = { 
+      ...data,
+      userId: user.uid,
       productName: product.name,
       date: new Date().toISOString(),
     };
-    setStockAdjustments(prev => [newAdjustment, ...prev]);
-    setProducts(prev => prev.map(p => p.id === data.productId ? { ...p, stock: p.stock + data.quantity } : p));
+
+    const batch = writeBatch(db);
+    
+    const adjRef = doc(getCollectionRef('stockAdjustments'));
+    batch.set(adjRef, newAdjustment);
+
+    const productRef = doc(db, "products", product.id);
+    batch.update(productRef, { stock: product.stock + data.quantity });
+
+    await batch.commit();
     toast({ title: "Stok Hareketi Eklendi" });
   };
-  const handleUpdateStockAdjustment = (data: StockAdjustment) => {
-    setStockAdjustments(prev => prev.map(a => a.id === data.id ? data : a));
+  const handleUpdateStockAdjustment = async (data: StockAdjustment) => {
+    const { id, ...adjData } = data;
+    await updateDoc(doc(db, 'stockAdjustments', id), adjData);
     toast({ title: "Stok Hareketi Güncellendi" });
   };
-  const handleDeleteStockAdjustment = (id: string) => {
+  const handleDeleteStockAdjustment = async (id: string) => {
     const adjToDelete = stockAdjustments.find(a => a.id === id);
-    if(!adjToDelete) return;
+    if(!adjToDelete || !user) return;
+    
+    const batch = writeBatch(db);
 
-    setProducts(prev => prev.map(p => p.id === adjToDelete.productId ? { ...p, stock: p.stock - adjToDelete.quantity } : p));
+    const adjRef = doc(db, 'stockAdjustments', id);
+    batch.delete(adjRef);
 
-    setStockAdjustments(prev => prev.filter(a => a.id !== id));
+    const product = products.find(p => p.id === adjToDelete.productId);
+    if(product) {
+        const productRef = doc(db, "products", product.id);
+        batch.update(productRef, { stock: product.stock - adjToDelete.quantity });
+    }
+
+    await batch.commit();
     toast({ title: "Stok Hareketi Silindi", variant: "destructive" });
   };
   
   // Suppliers
-  const handleAddSupplier = (data: Omit<Supplier, 'id'>) => {
-    const newSupplier = { ...data, id: generateId('SUP') };
-    setSuppliers(prev => [...prev, newSupplier]);
+  const handleAddSupplier = async (data: Omit<Supplier, 'id'|'userId'>) => {
+    if(!user) return;
+    const newSupplier = { ...data, userId: user.uid };
+    await addDoc(getCollectionRef('suppliers'), newSupplier);
     toast({ title: "Tedarikçi Eklendi", description: `${newSupplier.name} başarıyla eklendi.` });
   };
-  const handleUpdateSupplier = (data: Supplier) => {
-    setSuppliers(prev => prev.map(s => s.id === data.id ? data : s));
+  const handleUpdateSupplier = async (data: Supplier) => {
+    const { id, ...supplierData } = data;
+    await updateDoc(doc(db, 'suppliers', id), supplierData);
     toast({ title: "Tedarikçi Güncellendi", description: `${data.name} bilgileri güncellendi.` });
   };
-  const handleDeleteSupplier = (id: string) => {
-    setSuppliers(prev => prev.filter(s => s.id !== id));
+  const handleDeleteSupplier = async (id: string) => {
+    await deleteDoc(doc(db, 'suppliers', id));
     toast({ title: "Tedarikçi Silindi", variant: "destructive" });
   };
 
   // Staff
-  const handleAddStaff = (data: Omit<StaffType, 'id'>) => {
-    const newStaff = { ...data, id: generateId('STA') };
-    setStaff(prev => [...prev, newStaff]);
+  const handleAddStaff = async (data: Omit<StaffType, 'id'|'userId'>) => {
+    if(!user) return;
+    const newStaff = { ...data, userId: user.uid };
+    await addDoc(getCollectionRef('staff'), newStaff);
     toast({ title: "Personel Eklendi", description: `${newStaff.name} başarıyla eklendi.` });
   };
-  const handleUpdateStaff = (data: StaffType) => {
-    setStaff(prev => prev.map(s => s.id === data.id ? data : s));
+  const handleUpdateStaff = async (data: StaffType) => {
+    const { id, ...staffData } = data;
+    await updateDoc(doc(db, 'staff', id), staffData);
     toast({ title: "Personel Güncellendi", description: `${data.name} bilgileri güncellendi.` });
   };
-  const handleDeleteStaff = (id: string) => {
-    setStaff(prev => prev.filter(s => s.id !== id));
+  const handleDeleteStaff = async (id: string) => {
+    await deleteDoc(doc(db, 'staff', id));
     toast({ title: "Personel Silindi", variant: "destructive" });
   };
-
 
   // Cashbox Logic
   const openingBalance = cashboxHistory[0]?.closing || 0;
@@ -323,10 +413,11 @@ export default function DashboardPage() {
   const cashOutToday = expenses.filter(e => isToday(e.date)).reduce((sum, e) => sum + e.amount, 0);
   const expectedBalance = openingBalance + cashInToday - cashOutToday;
 
-  const handleDayClose = (actualBalance: number) => {
+  const handleDayClose = async (actualBalance: number) => {
+    if(!user) return;
     const difference = actualBalance - expectedBalance;
-    const newEntry: CashboxHistory = {
-        id: `CBH${cashboxHistory.length + 1}`,
+    const newEntry = {
+        userId: user.uid,
         date: new Date().toISOString(),
         opening: openingBalance,
         cashIn: cashInToday,
@@ -334,7 +425,7 @@ export default function DashboardPage() {
         closing: actualBalance,
         difference: difference
     };
-    setCashboxHistory([newEntry, ...cashboxHistory]);
+    await addDoc(getCollectionRef('cashboxHistory'), newEntry);
     toast({
       title: "Gün Kapatıldı",
       description: `Kasa sayımı tamamlandı. Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(difference)}`,
@@ -346,6 +437,10 @@ export default function DashboardPage() {
 
 
   const renderView = () => {
+    if (loadingData) {
+      return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+    }
+
     switch (activeView) {
       case 'anasayfa':
         return <Dashboard customers={customers} expenses={expenses} salesData={salesData} />;

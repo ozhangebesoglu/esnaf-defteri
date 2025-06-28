@@ -12,22 +12,26 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Package, BookUser, ShieldAlert, Banknote } from 'lucide-react';
+import { LayoutDashboard, Package, BookUser, ShieldAlert, Banknote, Wallet, AreaChart } from 'lucide-react';
 
 import Dashboard from '@/components/dashboard';
 import Customers from '@/components/customers';
 import Monitoring from '@/components/monitoring';
 import Inventory from '@/components/inventory';
 import Financials from '@/components/financials';
+import Cashbox from '@/components/cashbox';
+import Reports from '@/components/reports';
 import { Logo } from '@/components/logo';
 
-type View = 'anasayfa' | 'envanter' | 'finansal' | 'cari' | 'uyarilar';
+type View = 'anasayfa' | 'envanter' | 'finansal' | 'cari' | 'kasa' | 'raporlar' | 'uyarilar';
 
 const viewTitles: Record<View, string> = {
   anasayfa: 'Anasayfa',
   envanter: 'Envanter Yönetimi',
   finansal: 'Finansal Durum',
   cari: 'Cari Hesaplar',
+  kasa: 'Kasa Yönetimi',
+  raporlar: 'Raporlar',
   uyarilar: 'Uyarılar',
 };
 
@@ -44,6 +48,10 @@ export default function Home() {
         return <Financials />;
       case 'cari':
         return <Customers />;
+      case 'kasa':
+        return <Cashbox />;
+      case 'raporlar':
+        return <Reports />;
       case 'uyarilar':
         return <Monitoring />;
       default:
@@ -102,6 +110,26 @@ export default function Home() {
               >
                 <BookUser />
                 <span>Cari Hesaplar</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('kasa')}
+                isActive={activeView === 'kasa'}
+                tooltip="Kasa"
+              >
+                <Wallet />
+                <span>Kasa</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('raporlar')}
+                isActive={activeView === 'raporlar'}
+                tooltip="Raporlar"
+              >
+                <AreaChart />
+                <span>Raporlar</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

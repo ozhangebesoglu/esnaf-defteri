@@ -1,4 +1,4 @@
-import { Order, Sale, StockAdjustment, Customer, MonitoringAlert, Product, Expense } from './types';
+import { Order, Sale, StockAdjustment, Customer, MonitoringAlert, Product, Expense, CashboxHistory } from './types';
 
 export const salesData: Sale[] = [
   { month: 'Oca', revenue: 4000 },
@@ -55,4 +55,10 @@ export const expenses: Expense[] = [
   { id: 'EXP003', date: '2023-10-28', description: 'Ambalaj malzemeleri (poşet, streç film)', category: 'Malzeme', amount: 220.00 },
   { id: 'EXP004', date: '2023-10-25', description: 'Ali Usta\'nın haftalık ödemesi', category: 'Maaş', amount: 1500.00 },
   { id: 'EXP005', date: '2023-10-22', description: 'Temizlik malzemeleri', category: 'Diğer', amount: 85.50 },
+];
+
+export const cashboxHistory: CashboxHistory[] = [
+  { id: 'CBH001', date: '26.10.2023', opening: 500.00, cashIn: 2350.50, cashOut: 450.00, closing: 2400.50, difference: 0 },
+  { id: 'CBH002', date: '25.10.2023', opening: 450.25, cashIn: 1800.75, cashOut: 750.00, closing: 1501.00, difference: 1.00 },
+  { id: 'CBH003', date: '24.10.2023', opening: 610.00, cashIn: 2100.00, cashOut: 200.00, closing: 2505.00, difference: -5.00 },
 ];

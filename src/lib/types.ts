@@ -50,3 +50,13 @@ export type Expense = {
   category: 'Kira' | 'Fatura' | 'Malzeme' | 'Maaş' | 'Diğer';
   amount: number;
 };
+
+export type CashboxHistory = {
+  id: string;
+  date: string;
+  opening: number;
+  cashIn: number;
+  cashOut: number;
+  closing: number;
+  difference: number;
+};

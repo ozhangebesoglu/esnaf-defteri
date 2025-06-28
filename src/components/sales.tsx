@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { recentOrders, customers } from "@/lib/data"
 import type { Order } from "@/lib/types"
+import SaleDetail from "./sale-detail"
 
 const saleSchema = z.object({
   customerId: z.string().min(1, "Lütfen bir müşteri seçin."),
@@ -98,12 +99,17 @@ function SaleForm({ sale, setOpen }: { sale?: Order, setOpen: (open: boolean) =>
 
 export default function Sales() {
   const [open, setOpen] = useState(false)
-  const [selectedSale, setSelectedSale] = useState<Order | undefined>(undefined);
+  const [selectedSaleForEdit, setSelectedSaleForEdit] = useState<Order | undefined>(undefined);
+  const [selectedSaleIdForDetail, setSelectedSaleIdForDetail] = useState<string | null>(null);
 
   const handleOpenDialog = (sale?: Order) => {
-    setSelectedSale(sale);
+    setSelectedSaleForEdit(sale);
     setOpen(true);
   };
+  
+  const handleRowClick = (orderId: string) => {
+      setSelectedSaleIdForDetail(orderId);
+  }
 
   const getStatusVariant = (status: Order['status']) => {
     switch (status) {
@@ -113,15 +119,19 @@ export default function Sales() {
       default: return 'outline'
     }
   }
+  
+  if (selectedSaleIdForDetail) {
+      return <SaleDetail orderId={selectedSaleIdForDetail} onBack={() => setSelectedSaleIdForDetail(null)} />;
+  }
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Satışlar</CardTitle>
-          <CardDescription>İşletmenizin tüm satış işlemlerinin kaydı.</CardDescription>
+          <CardDescription>İşletmenizin tüm satış işlemlerinin kaydı. Detay için bir satışa tıklayın.</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={(isOpen) => { if(!isOpen) setSelectedSale(undefined); setOpen(isOpen);}}>
+        <Dialog open={open} onOpenChange={(isOpen) => { if(!isOpen) setSelectedSaleForEdit(undefined); setOpen(isOpen);}}>
           <DialogTrigger asChild>
             <Button onClick={() => handleOpenDialog()}>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -130,12 +140,12 @@ export default function Sales() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>{selectedSale ? 'Satışı Düzenle' : 'Yeni Satış Ekle'}</DialogTitle>
+              <DialogTitle>{selectedSaleForEdit ? 'Satışı Düzenle' : 'Yeni Satış Ekle'}</DialogTitle>
               <DialogDescription>
-                 {selectedSale ? `${selectedSale.id} numaralı satışı düzenleyin.` : 'Yeni bir satış işlemi oluşturun. Bu işlem müşterinin cari hesabına da işlenecektir.'}
+                 {selectedSaleForEdit ? `${selectedSaleForEdit.id} numaralı satışı düzenleyin.` : 'Yeni bir satış işlemi oluşturun. Bu işlem müşterinin cari hesabına da işlenecektir.'}
               </DialogDescription>
             </DialogHeader>
-            <SaleForm sale={selectedSale} setOpen={setOpen} />
+            <SaleForm sale={selectedSaleForEdit} setOpen={setOpen} />
           </DialogContent>
         </Dialog>
       </CardHeader>
@@ -147,12 +157,12 @@ export default function Sales() {
               <TableHead>Müşteri</TableHead>
               <TableHead className="text-right">Tutar</TableHead>
               <TableHead className="text-center">Durum</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[50px] text-right">İşlem</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {recentOrders.map((order) => (
-              <TableRow key={order.id}>
+              <TableRow key={order.id} onClick={() => handleRowClick(order.id)} className="cursor-pointer">
                 <TableCell className="font-medium">{order.id}</TableCell>
                 <TableCell>{order.customerName}</TableCell>
                 <TableCell className="text-right font-mono">
@@ -161,8 +171,8 @@ export default function Sales() {
                 <TableCell className="text-center">
                   <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
                 </TableCell>
-                 <TableCell>
-                  <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(order)}>
+                 <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleOpenDialog(order)}}>
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </TableCell>

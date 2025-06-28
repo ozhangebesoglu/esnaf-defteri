@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { products } from "@/lib/data"
 import { ProductIcon } from "./product-icons"
 
-export default function StockStatus() {
+export default function StockStatus({ onProductSelect }: { onProductSelect: (productId: string) => void }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Mevcut Stok Durumu</CardTitle>
-        <CardDescription>Tüm ürünlerin anlık stok miktarları ve durumları.</CardDescription>
+        <CardDescription>Tüm ürünlerin anlık stok miktarları ve durumları. Detay için bir ürüne tıklayın.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -25,7 +25,7 @@ export default function StockStatus() {
           </TableHeader>
           <TableBody>
             {products.map((product) => (
-              <TableRow key={product.id}>
+              <TableRow key={product.id} onClick={() => onProductSelect(product.id)} className="cursor-pointer">
                 <TableCell>
                   <ProductIcon type={product.type} />
                 </TableCell>

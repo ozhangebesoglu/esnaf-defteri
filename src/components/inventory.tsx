@@ -1,11 +1,19 @@
 "use client"
 
+import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import StockStatus from "./stock-status"
 import StockAdjustments from "./stock-adjustments"
 import Products from "./products"
+import ProductDetail from "./product-detail"
 
 export default function Inventory() {
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+
+  if (selectedProductId) {
+    return <ProductDetail productId={selectedProductId} onBack={() => setSelectedProductId(null)} />
+  }
+
   return (
     <Tabs defaultValue="status" className="w-full">
       <TabsList className="grid w-full grid-cols-3">
@@ -14,7 +22,7 @@ export default function Inventory() {
         <TabsTrigger value="products">Ürünler</TabsTrigger>
       </TabsList>
       <TabsContent value="status">
-        <StockStatus />
+        <StockStatus onProductSelect={setSelectedProductId} />
       </TabsContent>
       <TabsContent value="movements">
         <StockAdjustments />

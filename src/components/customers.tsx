@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { customers } from "@/lib/data"
 import type { Customer } from "@/lib/types"
+import CustomerDetail from "./customer-detail"
 
 const customerSchema = z.object({
   name: z.string().min(2, "İsim en az 2 karakter olmalıdır."),
@@ -85,11 +86,20 @@ function CustomerForm({ customer, setOpen }: { customer?: Customer, setOpen: (op
 
 export default function Customers() {
   const [open, setOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined);
+  const [selectedCustomerForEdit, setSelectedCustomerForEdit] = useState<Customer | undefined>(undefined);
+  const [selectedCustomerIdForDetail, setSelectedCustomerIdForDetail] = useState<string | null>(null);
 
   const handleOpenDialog = (customer?: Customer) => {
-    setSelectedCustomer(customer);
+    setSelectedCustomerForEdit(customer);
     setOpen(true);
+  }
+
+  const handleRowClick = (customerId: string) => {
+    setSelectedCustomerIdForDetail(customerId);
+  }
+
+  if (selectedCustomerIdForDetail) {
+    return <CustomerDetail customerId={selectedCustomerIdForDetail} onBack={() => setSelectedCustomerIdForDetail(null)} />;
   }
 
   return (
@@ -97,9 +107,9 @@ export default function Customers() {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Cari Hesaplar</CardTitle>
-          <CardDescription>Müşteri borç ve alacaklarını yönetin.</CardDescription>
+          <CardDescription>Müşteri borç ve alacaklarını yönetin. Detay için bir müşteriye tıklayın.</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(isOpen) => { if(!isOpen) setSelectedCustomerForEdit(undefined); setOpen(isOpen);}}>
           <DialogTrigger asChild>
             <Button onClick={() => handleOpenDialog()}>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -108,12 +118,12 @@ export default function Customers() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>{selectedCustomer ? 'Müşteriyi Düzenle' : 'Yeni Müşteri Ekle'}</DialogTitle>
+              <DialogTitle>{selectedCustomerForEdit ? 'Müşteriyi Düzenle' : 'Yeni Müşteri Ekle'}</DialogTitle>
               <DialogDescription>
-                {selectedCustomer ? `Detayları ${selectedCustomer.name} için güncelle.` : 'Kayıtlarınıza yeni bir müşteri ekleyin.'}
+                {selectedCustomerForEdit ? `Detayları ${selectedCustomerForEdit.name} için güncelle.` : 'Kayıtlarınıza yeni bir müşteri ekleyin.'}
               </DialogDescription>
             </DialogHeader>
-            <CustomerForm customer={selectedCustomer} setOpen={setOpen} />
+            <CustomerForm customer={selectedCustomerForEdit} setOpen={setOpen} />
           </DialogContent>
         </Dialog>
       </CardHeader>
@@ -124,19 +134,19 @@ export default function Customers() {
               <TableHead>Ad Soyad</TableHead>
               <TableHead>E-posta</TableHead>
               <TableHead className="text-right">Bakiye</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[50px] text-right">İşlem</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {customers.map((customer) => (
-              <TableRow key={customer.id}>
+              <TableRow key={customer.id} onClick={() => handleRowClick(customer.id)} className="cursor-pointer">
                 <TableCell className="font-medium">{customer.name}</TableCell>
                 <TableCell>{customer.email}</TableCell>
                 <TableCell className={`text-right font-mono ${customer.balance < 0 ? 'text-destructive' : ''}`}>
                   {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customer.balance)}
                 </TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(customer)}>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleOpenDialog(customer); }}>
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </TableCell>

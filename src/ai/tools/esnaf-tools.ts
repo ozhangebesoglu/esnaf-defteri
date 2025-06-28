@@ -112,7 +112,8 @@ export const addCustomerTool = ai.defineTool(
       email: z
         .string()
         .email()
-        .describe("Yeni müşterinin e-posta adresi."),
+        .describe("Yeni müşterinin e-posta adresi. Bu alan zorunlu değildir.")
+        .optional(),
       initialDebt: z.number().describe("Müşterinin başlangıç borç tutarı. Yoksa belirtme.").optional(),
     }),
     outputSchema: z.any(),

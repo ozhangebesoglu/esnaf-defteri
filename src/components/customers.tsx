@@ -25,7 +25,7 @@ import { CustomerForm } from "./customer-form"
 interface CustomersProps {
     customers: Customer[];
     orders: Order[];
-    onAddCustomer: (data: { name: string, email: string, initialDebt?: number }) => void;
+    onAddCustomer: (data: { name: string, email?: string, initialDebt?: number }) => void;
     onUpdateCustomer: (data: Customer) => void;
     onDeleteCustomer: (id: string) => void;
     onAddPayment: (data: { customerId: string, total: number, description: string }) => void;
@@ -132,7 +132,7 @@ export default function Customers({ customers, orders, onAddCustomer, onUpdateCu
               {customers.length > 0 ? customers.map((customer) => (
                 <TableRow key={customer.id} onClick={() => handleRowClick(customer.id)} className="cursor-pointer">
                   <TableCell className="font-medium">{customer.name}</TableCell>
-                  <TableCell>{customer.email}</TableCell>
+                  <TableCell>{customer.email || '–'}</TableCell>
                   <TableCell className={`text-right font-mono ${customer.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
                     {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customer.balance)}
                   </TableCell>

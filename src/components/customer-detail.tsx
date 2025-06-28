@@ -79,14 +79,18 @@ export default function CustomerDetail({ customer, orders, onBack, onUpdateCusto
         </Button>
         <div className="flex items-center gap-4 flex-1">
             <Avatar className="hidden h-11 w-11 sm:flex">
-                <AvatarImage src={`https://avatar.vercel.sh/${customer.email}.png`} alt={customer.name} />
+                <AvatarImage src={`https://avatar.vercel.sh/${customer.email || customer.id}.png`} alt={customer.name} />
                 <AvatarFallback>{customer.name.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
                 <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
                     {customer.name}
                 </h1>
-                <p className="text-sm text-muted-foreground">{customer.email}</p>
+                {customer.email ? (
+                    <p className="text-sm text-muted-foreground">{customer.email}</p>
+                ) : (
+                    <p className="text-sm text-muted-foreground italic">E-posta belirtilmemiş</p>
+                )}
             </div>
         </div>
          <div className="ml-auto flex items-center gap-2">

@@ -13,7 +13,7 @@ import type { Customer } from "@/lib/types"
 export const customerSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(2, "İsim en az 2 karakter olmalıdır."),
-  email: z.string().email("Geçersiz e-posta adresi."),
+  email: z.string().email("Geçersiz e-posta adresi.").optional().or(z.literal('')),
   balance: z.coerce.number(),
 })
 
@@ -53,7 +53,7 @@ export function CustomerForm({ customer, setOpen, onSave }: CustomerFormProps) {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>E-posta Adresi</FormLabel>
+              <FormLabel>E-posta Adresi (İsteğe Bağlı)</FormLabel>
               <FormControl><Input type="email" placeholder="ahmet.y@ornek.com" {...field} /></FormControl>
               <FormMessage />
             </FormItem>

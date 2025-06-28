@@ -81,7 +81,7 @@ export default function Home() {
   // --- Handlers ---
   
   // Customers
-  const handleAddCustomer = (data: { name: string; email: string; initialDebt?: number }) => {
+  const handleAddCustomer = (data: { name: string; email?: string; initialDebt?: number }) => {
     const newId = generateId('CUS');
     const newCustomer: Customer = { 
         id: newId, 

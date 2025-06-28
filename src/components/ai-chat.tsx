@@ -28,7 +28,7 @@ interface AiChatProps {
     onAddPayment: (data: { customerId: string, total: number, description: string }) => void;
     onAddExpense: (data: Omit<Expense, 'id' | 'date'>) => void;
     onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void;
-    onAddCustomer: (data: { name: string, email: string, initialDebt?: number }) => void;
+    onAddCustomer: (data: { name: string, email?: string, initialDebt?: number }) => void;
     onAddCashSale: (data: { description: string, total: number }) => void;
     onDeleteCustomer: (id: string) => void;
     onDeleteProduct: (id: string) => void;

@@ -31,12 +31,18 @@ export function CustomerForm({ customer, setOpen, onSave }: CustomerFormProps) {
   })
 
   function onSubmit(values: z.infer<typeof customerSchema>) {
-    const dataToSave = {
-      ...values,
-      initialDebt: values.initialDebt || 0,
-      balance: customer ? values.balance : values.initialDebt,
-    };
-    onSave(dataToSave);
+    if (customer) {
+      // For editing, we pass the updated name and email but preserve the original balance
+      // to maintain data integrity. Balance should only be changed via transactions.
+      onSave({ ...customer, name: values.name, email: values.email });
+    } else {
+      // For a new customer, we use the initialDebt value from the form.
+      onSave({
+        name: values.name,
+        email: values.email,
+        initialDebt: values.initialDebt || 0,
+      });
+    }
     setOpen(false);
   }
 
@@ -66,17 +72,9 @@ export function CustomerForm({ customer, setOpen, onSave }: CustomerFormProps) {
           )}
         />
         {customer ? (
-          <FormField
-            control={form.control}
-            name="balance"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Mevcut Bakiye</FormLabel>
-                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="text-sm text-muted-foreground p-3 bg-muted rounded-md border text-center">
+            Müşteri bakiyesi, yapılan satış ve ödeme işlemleriyle otomatik olarak güncellenir.
+          </div>
         ) : (
            <FormField
             control={form.control}

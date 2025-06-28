@@ -8,7 +8,7 @@ export const addSaleTool = ai.defineTool(
   {
     name: 'addSale',
     description:
-      'Müşteriye yeni bir satış (veresiye/borç) ekle. Bu işlem müşterinin borcunu artırır.',
+      'Bir müşteriye veresiye (borç) satış ekler. Örneğin: "Ahmet Yılmaz\'a 2kg kıyma satışı ekle, tutarı 500 lira." Bu işlem müşterinin borcunu artırır.',
     inputSchema: z.object({
       customerName: z
         .string()
@@ -26,7 +26,7 @@ export const addSaleTool = ai.defineTool(
 export const addCashSaleTool = ai.defineTool(
   {
     name: 'addCashSale',
-    description: 'Veresiye olmayan, peşin (restoran/tezgah) satışı ekle. Bu işlem bir müşterinin borcunu etkilemez.',
+    description: 'Müşteriye bağlı olmayan, tezgahtan yapılan peşin satışları ekler. Örneğin: "Tezgahtan 200 liralık peşin satış yaptım." Bu işlem müşteri borçlarını etkilemez.',
     inputSchema: z.object({
       description: z.string().describe('Satılan ürünlerin veya hizmetin açıklaması.'),
       total: z.number().describe('Satışın toplam tutarı (Türk Lirası).'),
@@ -40,7 +40,7 @@ export const addPaymentTool = ai.defineTool(
   {
     name: 'addPayment',
     description:
-      'Bir müşteriden alınan ödemeyi kaydet. Bu işlem müşterinin borcunu azaltır.',
+      'Bir müşteriden gelen ödemeyi kaydeder. Örneğin: "Ayşe Kaya\'dan 100 lira ödeme aldım." Bu işlem müşterinin borcunu azaltır.',
     inputSchema: z.object({
       customerName: z
         .string()
@@ -59,7 +59,7 @@ export const addPaymentTool = ai.defineTool(
 export const addExpenseTool = ai.defineTool(
   {
     name: 'addExpense',
-    description: 'Yeni bir işletme gideri ekle.',
+    description: 'Dükkan için yeni bir masraf (gider) ekler. Örneğin: "Elektrik faturası için 300 lira gider ekle." Kategori otomatik olarak tahmin edilir.',
     inputSchema: z.object({
       description: z.string().describe('Giderin açıklaması.'),
       amount: z.number().describe('Giderin tutarı (Türk Lirası).'),
@@ -75,7 +75,7 @@ export const addExpenseTool = ai.defineTool(
 export const addStockAdjustmentTool = ai.defineTool(
   {
     name: 'addStockAdjustment',
-    description: 'Bir ürünün stoğunu manuel olarak ayarla (arttır veya azalt).',
+    description: 'Bir ürünün stok miktarını elle değiştirir. Örneğin: "Bozulduğu için 2kg kıymayı stoktan düş." Stok eklemek için pozitif, azaltmak için negatif sayı kullan.',
     inputSchema: z.object({
       productName: z.string().describe('Stoğu ayarlanacak ürünün adı.'),
       quantity: z
@@ -104,7 +104,7 @@ export const addStockAdjustmentTool = ai.defineTool(
 export const addCustomerTool = ai.defineTool(
   {
     name: 'addCustomer',
-    description: 'Yeni bir müşteri oluştur ve sisteme kaydet. Müşterinin başlangıç borcu varsa, bunu da belirtebilirsin.',
+    description: 'Sisteme yeni bir müşteri kaydeder. Örneğin: "Yeni müşteri ekle: Adı Canan Güneş, telefonu 5551234567, başlangıç borcu 150 lira."',
     inputSchema: z.object({
       customerName: z
         .string()
@@ -124,7 +124,7 @@ export const addCustomerTool = ai.defineTool(
 export const deleteCustomerTool = ai.defineTool(
   {
     name: 'deleteCustomer',
-    description: 'Bir müşteriyi ve tüm ilgili verilerini sistemden sil.',
+    description: 'Bir müşteriyi ve ona ait tüm borç/ödeme kayıtlarını sistemden kalıcı olarak siler.',
     inputSchema: z.object({
       customerName: z
         .string()
@@ -138,7 +138,7 @@ export const deleteCustomerTool = ai.defineTool(
 export const deleteProductTool = ai.defineTool(
   {
     name: 'deleteProduct',
-    description: 'Bir ürünü sistemden sil.',
+    description: 'Bir ürünü ürün listesinden kalıcı olarak siler.',
     inputSchema: z.object({
       productName: z.string().describe('Silinecek ürünün adı.'),
     }),
@@ -150,7 +150,7 @@ export const deleteProductTool = ai.defineTool(
 export const deleteSaleTool = ai.defineTool(
   {
     name: 'deleteSale',
-    description: 'Bir satış veya ödeme işlemini sil. İşlem numarasını (ID) kullanın.',
+    description: 'Belirli bir satış veya ödeme işlemini siler. İşlem kimliğini (ID) kullanır. Örneğin: "ORD001 numaralı satışı sil."',
     inputSchema: z.object({
       saleId: z.string().describe('Silinecek satış veya ödeme işleminin IDsi, örn., "ORD001" veya "PAY001".'),
     }),
@@ -162,7 +162,7 @@ export const deleteSaleTool = ai.defineTool(
 export const deleteExpenseTool = ai.defineTool(
   {
     name: 'deleteExpense',
-    description: 'Bir gider kaydını sil. İşlem numarasını (ID) kullanın.',
+    description: 'Belirli bir gider kaydını siler. İşlem kimliğini (ID) kullanır.',
     inputSchema: z.object({
       expenseId: z.string().describe('Silinecek gider kaydının IDsi, örn., "EXP001".'),
     }),
@@ -174,7 +174,7 @@ export const deleteExpenseTool = ai.defineTool(
 export const deleteStockAdjustmentTool = ai.defineTool(
   {
     name: 'deleteStockAdjustment',
-    description: 'Bir stok hareketini sil. İşlem numarasını (ID) kullanın.',
+    description: 'Belirli bir stok hareketini siler. İşlem kimliğini (ID) kullanır.',
     inputSchema: z.object({
       adjustmentId: z
         .string()

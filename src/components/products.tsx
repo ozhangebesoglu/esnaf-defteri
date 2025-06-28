@@ -32,8 +32,9 @@ export default function Products({ products, onAddProduct, onUpdateProduct, onDe
   const getProductTypeName = (type: Product['type']) => {
     switch (type) {
         case 'beef': return 'Kırmızı Et';
-        case 'pork': return 'Şarküteri';
+        case 'processed': return 'Şarküteri';
         case 'chicken': return 'Beyaz Et';
+        case 'dairy': return 'Süt Ürünleri';
         default: return 'Bilinmeyen';
     }
   }

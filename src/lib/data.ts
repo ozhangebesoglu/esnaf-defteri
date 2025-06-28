@@ -45,10 +45,11 @@ export const initialProducts: Product[] = [
   { id: 'PROD001', name: 'Antrikot', type: 'beef', stock: 15, price: 850, cost: 600, lowStockThreshold: 5 },
   { id: 'PROD002', name: 'Kıyma', type: 'beef', stock: 50, price: 550, cost: 400, lowStockThreshold: 10 },
   { id: 'PROD003', name: 'Kuzu Pirzola', type: 'beef', stock: 12, price: 950, cost: 750, lowStockThreshold: 5 },
-  { id: 'PROD004', name: 'Pastırma', type: 'pork', stock: 25, price: 1200, cost: 900, lowStockThreshold: 8 },
-  { id: 'PROD005', name: 'Sucuk', type: 'pork', stock: 40, price: 450, cost: 300, lowStockThreshold: 15 },
+  { id: 'PROD004', name: 'Pastırma', type: 'processed', stock: 25, price: 1200, cost: 900, lowStockThreshold: 8 },
+  { id: 'PROD005', name: 'Sucuk', type: 'processed', stock: 40, price: 450, cost: 300, lowStockThreshold: 15 },
   { id: 'PROD006', name: 'Tavuk Göğsü', type: 'chicken', stock: 4, price: 250, cost: 180, lowStockThreshold: 10 },
   { id: 'PROD007', name: 'Tavuk But', type: 'chicken', stock: 22, price: 180, cost: 120, lowStockThreshold: 10 },
+  { id: 'PROD008', name: 'Yoğurt (Tam Yağlı)', type: 'dairy', stock: 30, price: 80, cost: 60, lowStockThreshold: 10 },
 ];
 
 export const initialExpenses: Expense[] = [

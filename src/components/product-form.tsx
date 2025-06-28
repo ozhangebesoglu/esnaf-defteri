@@ -14,7 +14,7 @@ import type { Product } from "@/lib/types"
 export const productSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(2, "Ürün adı en az 2 karakter olmalıdır."),
-  type: z.enum(['beef', 'pork', 'chicken'], {
+  type: z.enum(['beef', 'processed', 'chicken', 'dairy'], {
     required_error: "Lütfen bir ürün tipi seçin.",
   }),
   cost: z.coerce.number().positive("Maliyet pozitif bir sayı olmalıdır."),
@@ -68,8 +68,9 @@ export function ProductForm({ product, setOpen, onSave }: ProductFormProps) {
                     </FormControl>
                     <SelectContent>
                         <SelectItem value="beef">Kırmızı Et</SelectItem>
-                        <SelectItem value="pork">Şarküteri</SelectItem>
+                        <SelectItem value="processed">Şarküteri</SelectItem>
                         <SelectItem value="chicken">Beyaz Et</SelectItem>
+                        <SelectItem value="dairy">Süt Ürünleri</SelectItem>
                     </SelectContent>
                 </Select>
               <FormMessage />

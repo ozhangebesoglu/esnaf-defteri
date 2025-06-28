@@ -79,12 +79,17 @@ export type ChatWithAssistantOutput = z.infer<
   typeof ChatWithAssistantOutputSchema
 >;
 
-const systemPrompt = `Sen bir kasap dükkanı için geliştirilmiş "Esnaf Defteri" uygulamasının yardımcı yapay zeka asistanısın. Kullanıcının sorularını, sağlanan JSON verilerini kullanarak yanıtla. Cevapların kısa, net ve bir esnafın anlayacağı dilde olsun.
-Kullanıcı bir işlem yapmak istediğinde (örneğin, "Ahmet Yılmaz'a 500 liralık satış ekle", "Ayşe Kaya'dan 100 lira ödeme aldım", "Ekim ayı kirası 5000 lira gider ekle", "Yeni müşteri ekle: Adı Canan Güneş, e-postası canan@ornek.com", "Tezgahtan 200 liralık peşin satış yaptım"), uygun aracı çağır.
-"addSale" aracını sadece veresiye (borç) satışlar için kullan. Peşin satışlar için "addCashSale" aracını kullan.
-Sadece kullanıcı açıkça bir işlem yapmanı istediğinde araçları kullan. Bilgi soruyorsa, sadece metinle cevap ver.
-İşlem başarılı olursa kullanıcıyı bilgilendir. Bir müşteri veya ürün adı belirsizse veya bulunamazsa, kullanıcıdan netleştirmesini iste. Yeni bir müşteri eklerken isim bilgisi zorunludur, e-posta ise isteğe bağlıdır. Eksik bilgi varsa kullanıcıdan iste. Yeni bir ürün eklerken ise tüm gerekli bilgiler (isim, tip, fiyat, maliyet vb.) eksikse, kullanıcıdan bu bilgileri iste.
-ÖNEMLİ: Bir satış, gider veya stok hareketini silmek için kullanıcıdan işlem numarasını (ID) isteyebilirsin veya konuşma geçmişindeki verilerden bu ID'yi bulabilirsin. Örneğin, "ORD001 numaralı satışı sil".`;
+const systemPrompt = `Sen, bir kasap dükkanı için geliştirilmiş "Esnaf Defteri" uygulamasının zeki ve yardımsever yapay zeka asistanısın. Görevin, kullanıcıların işlemlerini kolaylaştırmak ve sorularını hızlıca yanıtlamaktır. Cevapların her zaman kısa, net ve bir esnafın kolayca anlayacağı, samimi bir dilde olmalı.
+Kullanıcı bir işlem yapmak istediğinde (örneğin, "Ahmet Yılmaz'a 500 liralık satış ekle", "Ayşe Kaya'dan 100 lira ödeme aldım", "Yeni müşteri ekle: Adı Canan Güneş"), uygun aracı kullan.
+Eğer bir müşteri veya ürün adı belirsizse ya da bulunamazsa, kibarca kullanıcıdan ismi kontrol etmesini veya yeni bir kayıt eklemek isteyip istemediğini sor.
+"addSale" aracını sadece veresiye (borç) satışlar için kullanmalısın. Peşin satışlar için "addCashSale" aracını kullan.
+Kullanıcı senden sadece bilgi istiyorsa (örneğin, "Ahmet'in ne kadar borcu var?"), araçları kullanmadan, sağlanan JSON verilerine göre cevap ver.
+İşlem başarılı olduğunda kullanıcıyı mutlaka bilgilendir.
+
+Mevcut Uygulama Verileri (JSON):
+\`\`\`json
+{{{json appData}}}
+\`\`\``;
 
 export async function chatWithAssistant(
   input: ChatWithAssistantInput
@@ -106,9 +111,10 @@ export async function chatWithAssistant(
   const llmResponse = await ai.generate({
     model: ai.model,
     messages: messages,
-    system: `${systemPrompt}\n\nMevcut Uygulama Verileri (JSON):\n\`\`\`json\n${JSON.stringify(
-      appData
-    )}\n\`\`\``,
+    system: systemPrompt,
+    customData: {
+      appData: JSON.stringify(appData),
+    },
     tools: [
       addSaleTool,
       addPaymentTool,
@@ -151,7 +157,7 @@ export async function chatWithAssistant(
             textResponse = `${customerForSale.name} için ${toolInput.total} TL tutarında satış eklendi.`;
           }
         } else {
-          textResponse = `"${toolInput.customerName}" adında bir müşteri bulamadım. Lütfen müşterinin tam adını kontrol edin.`;
+          textResponse = `"${toolInput.customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin veya bu isimde yeni bir müşteri eklemek isterseniz belirtin.`;
         }
         break;
 
@@ -183,7 +189,7 @@ export async function chatWithAssistant(
             textResponse = `${customerForPayment.name} adlı müşteriden ${toolInput.total} TL ödeme alındı.`;
           }
         } else {
-          textResponse = `"${toolInput.customerName}" adında bir müşteri bulamadım. Lütfen müşterinin tam adını kontrol edin.`;
+          textResponse = `"${toolInput.customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin.`;
         }
         break;
 
@@ -213,7 +219,7 @@ export async function chatWithAssistant(
             textResponse = `${productForAdjustment.name} ürünü için stok hareketi eklendi.`;
           }
         } else {
-          textResponse = `"${toolInput.productName}" adında bir ürün bulamadım. Lütfen ürünün tam adını kontrol edin.`;
+          textResponse = `"${toolInput.productName}" adında bir ürün bulamadım. Lütfen ürün listesini kontrol edin.`;
         }
         break;
 

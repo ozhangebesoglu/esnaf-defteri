@@ -42,7 +42,7 @@ export type MonitoringAlert = {
 export type Product = {
   id: string;
   name: string;
-  type: 'beef' | 'pork' | 'chicken';
+  type: 'beef' | 'processed' | 'chicken' | 'dairy';
   stock: number;
   price: number;
   cost: number;

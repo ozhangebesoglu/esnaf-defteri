@@ -19,7 +19,7 @@ export const BeefIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export const PorkIcon = (props: SVGProps<SVGSVGElement>) => (
+export const ProcessedIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
@@ -55,17 +55,37 @@ export const ChickenIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export const ProductIcon = ({ type, className }: { type: 'beef' | 'pork' | 'chicken', className?: string }) => {
+export const DairyIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M8 8.5A2.5 2.5 0 0 1 10.5 6h3A2.5 2.5 0 0 1 16 8.5v5a2.5 2.5 0 0 1-2.5 2.5h-3A2.5 2.5 0 0 1 8 13.5v-5Z" />
+    <path d="M8 16h8" />
+    <path d="M10.5 6V5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" />
+    <path d="M8 13.5V18a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4.5" />
+  </svg>
+);
+
+export const ProductIcon = ({ type, className }: { type: 'beef' | 'processed' | 'chicken' | 'dairy', className?: string }) => {
   const Icon = {
     beef: BeefIcon,
-    pork: PorkIcon,
-    chicken: ChickenIcon
+    processed: ProcessedIcon,
+    chicken: ChickenIcon,
+    dairy: DairyIcon
   }[type];
 
   const colors = {
     beef: 'bg-red-200/50 text-red-700',
-    pork: 'bg-pink-200/50 text-pink-700',
-    chicken: 'bg-amber-200/50 text-amber-700'
+    processed: 'bg-pink-200/50 text-pink-700',
+    chicken: 'bg-amber-200/50 text-amber-700',
+    dairy: 'bg-sky-200/50 text-sky-700'
   }
 
   return (

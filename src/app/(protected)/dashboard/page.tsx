@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, getDoc } from "firebase/firestore";
@@ -47,7 +47,12 @@ import Campaigns from '@/components/campaigns';
 
 import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert, Supplier, Staff as StaffType, Sale } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
-import { initialAlerts, salesData as mockSalesData } from '@/lib/data';
+
+const initialAlerts: MonitoringAlert[] = [
+  { id: 'ALT001', severity: 'high', title: 'Negatif Stok: Antrikot', description: 'Antrikot stok adedi -2. Lütfen hemen inceleyin.', timestamp: new Date('2023-10-27T09:15:32').toISOString() },
+  { id: 'ALT002', severity: 'medium', title: 'Yüksek İndirim Uygulandı', description: 'ORD003 numaralı siparişe %50 indirim uygulandı, standart %20 limiti aşıldı.', timestamp: new Date('2023-10-26T14:30:15').toISOString() },
+  { id: 'ALT003', severity: 'low', title: 'Gecikmiş Bakiye Uyarısı', description: 'Ayşe Kaya adlı müşterinin 30 günden uzun süredir 75.50 TL borcu bulunmaktadır.', timestamp: new Date('2023-10-25T11:00:00').toISOString() },
+];
 
 type View = 
   'anasayfa' | 
@@ -103,8 +108,37 @@ export default function DashboardPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [staff, setStaff] = useState<StaffType[]>([]);
   const [alerts, setAlerts] = useState<MonitoringAlert[]>(initialAlerts);
-  const [salesData, setSalesData] = useState<Sale[]>(mockSalesData);
   
+  const salesData: Sale[] = useMemo(() => {
+    const monthNames = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+    const monthlyData: { month: string; revenue: number }[] = [];
+    const today = new Date();
+
+    // Initialize the last 6 months in order
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        monthlyData.push({ month: monthNames[d.getMonth()], revenue: 0 });
+    }
+
+    const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
+
+    orders.forEach(order => {
+        if (order.status === 'Tamamlandı' && order.total > 0) {
+            const orderDate = new Date(order.date);
+            if (orderDate >= sixMonthsAgo) {
+                const monthName = monthNames[orderDate.getMonth()];
+                const monthEntry = monthlyData.find(m => m.month === monthName);
+                if (monthEntry) {
+                    monthEntry.revenue += order.total;
+                }
+            }
+        }
+    });
+
+    return monthlyData;
+  }, [orders]);
+
 
   // --- Firestore Data Fetching ---
   useEffect(() => {

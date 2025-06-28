@@ -83,7 +83,9 @@ export default function AiChat({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const userMessage: Message = { role: 'user', content: values.message };
-    setMessages((current) => [...current, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    
     setIsLoading(true);
     form.reset();
 
@@ -99,8 +101,7 @@ export default function AiChat({
       };
 
       const response = await chatWithAssistant({
-        userMessage: values.message,
-        chatHistory: messages,
+        chatHistory: newMessages,
         appData,
       });
       

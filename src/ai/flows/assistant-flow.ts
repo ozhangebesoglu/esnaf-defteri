@@ -34,7 +34,6 @@ const findByName = <T extends {name: string}>(
 };
 
 const ChatWithAssistantInputSchema = z.object({
-  userMessage: z.string().describe('The latest message from the user.'),
   chatHistory: z
     .array(
       z.object({
@@ -42,7 +41,7 @@ const ChatWithAssistantInputSchema = z.object({
         content: z.string(),
       })
     )
-    .describe('The history of the conversation so far.'),
+    .describe('The history of the conversation so far, including the latest user message.'),
   appData: z
     .any()
     .describe(
@@ -90,7 +89,7 @@ Sadece kullanıcı açıkça bir işlem yapmanı istediğinde araçları kullan.
 export async function chatWithAssistant(
   input: ChatWithAssistantInput
 ): Promise<ChatWithAssistantOutput> {
-  const {userMessage, chatHistory, appData} = input;
+  const {chatHistory, appData} = input;
 
   // The Gemini API requires the conversation history to start with a 'user' role.
   // We filter out the initial welcome message from the model if it exists.
@@ -99,13 +98,10 @@ export async function chatWithAssistant(
       ? chatHistory.slice(1)
       : chatHistory;
 
-  const messages = [
-    ...validChatHistory.map(m => ({
+  const messages = validChatHistory.map(m => ({
       role: m.role,
       content: [{text: m.content}],
-    })),
-    {role: 'user', content: [{text: userMessage}]},
-  ];
+    }));
 
   const llmResponse = await ai.generate({
     model: ai.model,
@@ -224,13 +220,10 @@ export async function chatWithAssistant(
       case 'addCustomer':
         action = {
           type: 'addCustomer',
-          payload: {
-            name: toolInput.customerName,
-            email: toolInput.email,
-          },
+          payload: toolInput,
         };
         if (!textResponse) {
-          textResponse = `${toolInput.customerName} adlı yeni müşteri eklendi.`;
+          textResponse = `${toolInput.name} adlı yeni müşteri eklendi.`;
         }
         break;
       

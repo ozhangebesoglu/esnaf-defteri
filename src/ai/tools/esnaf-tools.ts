@@ -87,3 +87,67 @@ export const addStockAdjustmentTool = ai.defineTool(
   },
   async input => input
 );
+
+export const deleteCustomerTool = ai.defineTool(
+  {
+    name: 'deleteCustomer',
+    description: 'Bir müşteriyi ve tüm ilgili verilerini sistemden sil.',
+    inputSchema: z.object({
+      customerName: z
+        .string()
+        .describe('Silinecek müşterinin tam adı.'),
+    }),
+    outputSchema: z.any(),
+  },
+  async input => input
+);
+
+export const deleteProductTool = ai.defineTool(
+  {
+    name: 'deleteProduct',
+    description: 'Bir ürünü sistemden sil.',
+    inputSchema: z.object({
+      productName: z.string().describe('Silinecek ürünün adı.'),
+    }),
+    outputSchema: z.any(),
+  },
+  async input => input
+);
+
+export const deleteSaleTool = ai.defineTool(
+  {
+    name: 'deleteSale',
+    description: 'Bir satış veya ödeme işlemini sil. İşlem numarasını (ID) kullanın.',
+    inputSchema: z.object({
+      saleId: z.string().describe('Silinecek satış veya ödeme işleminin IDsi, örn., "ORD001" veya "PAY001".'),
+    }),
+    outputSchema: z.any(),
+  },
+  async input => input
+);
+
+export const deleteExpenseTool = ai.defineTool(
+  {
+    name: 'deleteExpense',
+    description: 'Bir gider kaydını sil. İşlem numarasını (ID) kullanın.',
+    inputSchema: z.object({
+      expenseId: z.string().describe('Silinecek gider kaydının IDsi, örn., "EXP001".'),
+    }),
+    outputSchema: z.any(),
+  },
+  async input => input
+);
+
+export const deleteStockAdjustmentTool = ai.defineTool(
+  {
+    name: 'deleteStockAdjustment',
+    description: 'Bir stok hareketini sil. İşlem numarasını (ID) kullanın.',
+    inputSchema: z.object({
+      adjustmentId: z
+        .string()
+        .describe('Silinecek stok hareketinin IDsi, örn., "ADJ001".'),
+    }),
+    outputSchema: z.any(),
+  },
+  async input => input
+);

@@ -14,8 +14,13 @@ import {
   addSaleTool,
   addExpenseTool,
   addStockAdjustmentTool,
+  deleteCustomerTool,
+  deleteProductTool,
+  deleteSaleTool,
+  deleteExpenseTool,
+  deleteStockAdjustmentTool,
 } from '@/ai/tools/esnaf-tools';
-import type {Customer, Product} from '@/lib/types';
+import type {Customer, Product, Order, Expense, StockAdjustment} from '@/lib/types';
 
 // Helper to find a resource by name
 const findByName = <T extends {name: string}>(
@@ -51,6 +56,11 @@ const ChatActionSchema = z
       'addPayment',
       'addExpense',
       'addStockAdjustment',
+      'deleteCustomer',
+      'deleteProduct',
+      'deleteSale',
+      'deleteExpense',
+      'deleteStockAdjustment',
     ]),
     payload: z.any(),
   })
@@ -69,7 +79,8 @@ export type ChatWithAssistantOutput = z.infer<
 const systemPrompt = `Sen bir kasap dükkanı için geliştirilmiş "Esnaf Defteri" uygulamasının yardımcı yapay zeka asistanısın. Kullanıcının sorularını, sağlanan JSON verilerini kullanarak yanıtla. Cevapların kısa, net ve bir esnafın anlayacağı dilde olsun.
 Kullanıcı bir işlem yapmak istediğinde (örneğin, "Ahmet Yılmaz'a 500 liralık satış ekle" veya "Ayşe Kaya'dan 100 lira ödeme aldım" veya "Ekim ayı kirası 5000 lira gider ekle"), uygun aracı çağır.
 Sadece kullanıcı açıkça bir işlem yapmanı istediğinde araçları kullan. Bilgi soruyorsa, sadece metinle cevap ver.
-İşlem başarılı olursa kullanıcıyı bilgilendir. Bir müşteri veya ürün adı belirsizse veya bulunamazsa, kullanıcıdan netleştirmesini iste.`;
+İşlem başarılı olursa kullanıcıyı bilgilendir. Bir müşteri veya ürün adı belirsizse veya bulunamazsa, kullanıcıdan netleştirmesini iste.
+ÖNEMLİ: Bir satış, gider veya stok hareketini silmek için kullanıcıdan işlem numarasını (ID) isteyebilirsin veya konuşma geçmişindeki verilerden bu ID'yi bulabilirsin. Örneğin, "ORD001 numaralı satışı sil".`;
 
 export async function chatWithAssistant(
   input: ChatWithAssistantInput
@@ -102,6 +113,11 @@ export async function chatWithAssistant(
       addPaymentTool,
       addExpenseTool,
       addStockAdjustmentTool,
+      deleteCustomerTool,
+      deleteProductTool,
+      deleteSaleTool,
+      deleteExpenseTool,
+      deleteStockAdjustmentTool,
     ],
   });
 
@@ -185,6 +201,78 @@ export async function chatWithAssistant(
           }
         } else {
           textResponse = `"${toolInput.productName}" adında bir ürün bulamadım. Lütfen ürünün tam adını kontrol edin.`;
+        }
+        break;
+      
+      case 'deleteCustomer':
+        const customerToDelete = findByName(
+          toolInput.customerName,
+          appData.customers as Customer[]
+        );
+        if (customerToDelete) {
+          action = {
+            type: 'deleteCustomer',
+            payload: customerToDelete.id,
+          };
+          if (!textResponse) {
+            textResponse = `${customerToDelete.name} adlı müşteri silindi.`;
+          }
+        } else {
+          textResponse = `"${toolInput.customerName}" adında bir müşteri bulamadım.`;
+        }
+        break;
+
+      case 'deleteProduct':
+        const productToDelete = findByName(
+          toolInput.productName,
+          appData.products as Product[]
+        );
+        if (productToDelete) {
+          action = {
+            type: 'deleteProduct',
+            payload: productToDelete.id,
+          };
+          if (!textResponse) {
+            textResponse = `${productToDelete.name} adlı ürün silindi.`;
+          }
+        } else {
+          textResponse = `"${toolInput.productName}" adında bir ürün bulamadım.`;
+        }
+        break;
+
+      case 'deleteSale':
+        const saleToDelete = (appData.orders as Order[]).find(o => o.id === toolInput.saleId);
+        if (saleToDelete) {
+            action = { type: 'deleteSale', payload: toolInput.saleId };
+             if (!textResponse) {
+                textResponse = `${toolInput.saleId} numaralı işlem silindi.`;
+             }
+        } else {
+            textResponse = `"${toolInput.saleId}" numaralı bir satış veya ödeme bulamadım.`;
+        }
+        break;
+
+      case 'deleteExpense':
+         const expenseToDelete = (appData.expenses as Expense[]).find(e => e.id === toolInput.expenseId);
+        if (expenseToDelete) {
+            action = { type: 'deleteExpense', payload: toolInput.expenseId };
+            if (!textResponse) {
+                textResponse = `${toolInput.expenseId} numaralı gider silindi.`;
+            }
+        } else {
+            textResponse = `"${toolInput.expenseId}" numaralı bir gider bulamadım.`;
+        }
+        break;
+
+      case 'deleteStockAdjustment':
+         const adjToDelete = (appData.stockAdjustments as StockAdjustment[]).find(a => a.id === toolInput.adjustmentId);
+        if (adjToDelete) {
+            action = { type: 'deleteStockAdjustment', payload: toolInput.adjustmentId };
+             if (!textResponse) {
+                textResponse = `${toolInput.adjustmentId} numaralı stok hareketi silindi.`;
+             }
+        } else {
+            textResponse = `"${toolInput.adjustmentId}" numaralı bir stok hareketi bulamadım.`;
         }
         break;
     }

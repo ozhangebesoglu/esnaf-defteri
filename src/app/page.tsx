@@ -258,6 +258,11 @@ export default function Home() {
                   onAddPayment={handleAddPayment}
                   onAddExpense={handleAddExpense}
                   onAddStockAdjustment={handleAddStockAdjustment}
+                  onDeleteCustomer={handleDeleteCustomer}
+                  onDeleteProduct={handleDeleteProduct}
+                  onDeleteSale={handleDeleteSale}
+                  onDeleteExpense={handleDeleteExpense}
+                  onDeleteStockAdjustment={handleDeleteStockAdjustment}
                />;
       default:
         return <Dashboard customers={customers} expenses={expenses} salesData={salesData} />;

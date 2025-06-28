@@ -28,6 +28,11 @@ interface AiChatProps {
     onAddPayment: (data: { customerId: string, total: number, description: string }) => void;
     onAddExpense: (data: Omit<Expense, 'id' | 'date'>) => void;
     onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void;
+    onDeleteCustomer: (id: string) => void;
+    onDeleteProduct: (id: string) => void;
+    onDeleteSale: (id: string) => void;
+    onDeleteExpense: (id: string) => void;
+    onDeleteStockAdjustment: (id: string) => void;
 }
 
 const formSchema = z.object({
@@ -50,7 +55,12 @@ export default function AiChat({
     onAddSale,
     onAddPayment,
     onAddExpense,
-    onAddStockAdjustment
+    onAddStockAdjustment,
+    onDeleteCustomer,
+    onDeleteProduct,
+    onDeleteSale,
+    onDeleteExpense,
+    onDeleteStockAdjustment
 }: AiChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -106,6 +116,21 @@ export default function AiChat({
                 break;
             case 'addStockAdjustment':
                 onAddStockAdjustment(response.action.payload);
+                break;
+            case 'deleteCustomer':
+                onDeleteCustomer(response.action.payload);
+                break;
+            case 'deleteProduct':
+                onDeleteProduct(response.action.payload);
+                break;
+            case 'deleteSale':
+                onDeleteSale(response.action.payload);
+                break;
+            case 'deleteExpense':
+                onDeleteExpense(response.action.payload);
+                break;
+            case 'deleteStockAdjustment':
+                onDeleteStockAdjustment(response.action.payload);
                 break;
         }
       }

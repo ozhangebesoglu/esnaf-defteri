@@ -106,7 +106,7 @@ export const addCustomerTool = ai.defineTool(
     name: 'addCustomer',
     description: 'Yeni bir müşteri oluştur ve sisteme kaydet.',
     inputSchema: z.object({
-      name: z
+      customerName: z
         .string()
         .describe('Yeni müşterinin tam adı.'),
       email: z

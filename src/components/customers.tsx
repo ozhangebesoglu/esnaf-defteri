@@ -97,7 +97,7 @@ export default function Customers({ customers, orders, onAddCustomer, onUpdateCu
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Cari Hesaplar</CardTitle>
+            <CardTitle>Müşteriler</CardTitle>
             <CardDescription>Müşteri borç ve alacaklarını yönetin. Detay için bir müşteriye tıklayın.</CardDescription>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

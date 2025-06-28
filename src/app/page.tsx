@@ -12,7 +12,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Package, BookUser, ShieldAlert, Banknote, Wallet, AreaChart, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Package, BookUser, ShieldAlert, Banknote, UtensilsCrossed, AreaChart, Sparkles } from 'lucide-react';
 
 import Dashboard from '@/components/dashboard';
 import Customers from '@/components/customers';
@@ -43,8 +43,8 @@ const viewTitles: Record<View, string> = {
   anasayfa: 'Anasayfa',
   envanter: 'Envanter Yönetimi',
   finansal: 'Finansal Durum',
-  cari: 'Cari Hesaplar',
-  kasa: 'Kasa Yönetimi',
+  cari: 'Müşteriler',
+  kasa: 'Restoran Satışları',
   raporlar: 'Raporlar',
   uyarilar: 'Uyarılar',
   'yapay-zeka': 'Yapay Zeka Asistanı'
@@ -238,7 +238,7 @@ export default function Home() {
                 />;
       case 'finansal':
         return <Financials 
-                  orders={orders}
+                  orders={orders.filter(o => o.customerId !== 'CASH_SALE')}
                   customers={customers}
                   expenses={expenses}
                   onAddSale={handleAddSale}
@@ -258,7 +258,11 @@ export default function Home() {
                   onAddPayment={handleAddPayment}
                />;
       case 'kasa':
-        return <Cashbox history={cashboxHistory} setHistory={setCashboxHistory} />;
+        return <Cashbox 
+                  history={cashboxHistory} 
+                  setHistory={setCashboxHistory} 
+                  cashSales={orders.filter(o => o.customerId === 'CASH_SALE')}
+               />;
       case 'raporlar':
         return <Reports customers={customers} expenses={expenses} orders={orders} products={products} />;
       case 'uyarilar':
@@ -336,20 +340,20 @@ export default function Home() {
               <SidebarMenuButton
                 onClick={() => setActiveView('cari')}
                 isActive={activeView === 'cari'}
-                tooltip="Cari Hesaplar"
+                tooltip="Müşteriler"
               >
                 <BookUser />
-                <span>Cari Hesaplar</span>
+                <span>Müşteriler</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setActiveView('kasa')}
                 isActive={activeView === 'kasa'}
-                tooltip="Kasa"
+                tooltip="Restoran"
               >
-                <Wallet />
-                <span>Kasa</span>
+                <UtensilsCrossed />
+                <span>Restoran</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>

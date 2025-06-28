@@ -83,7 +83,7 @@ const systemPrompt = `Sen bir kasap dükkanı için geliştirilmiş "Esnaf Defte
 Kullanıcı bir işlem yapmak istediğinde (örneğin, "Ahmet Yılmaz'a 500 liralık satış ekle", "Ayşe Kaya'dan 100 lira ödeme aldım", "Ekim ayı kirası 5000 lira gider ekle", "Yeni müşteri ekle: Adı Canan Güneş, e-postası canan@ornek.com", "Tezgahtan 200 liralık peşin satış yaptım"), uygun aracı çağır.
 "addSale" aracını sadece veresiye (borç) satışlar için kullan. Peşin satışlar için "addCashSale" aracını kullan.
 Sadece kullanıcı açıkça bir işlem yapmanı istediğinde araçları kullan. Bilgi soruyorsa, sadece metinle cevap ver.
-İşlem başarılı olursa kullanıcıyı bilgilendir. Bir müşteri veya ürün adı belirsizse veya bulunamazsa, kullanıcıdan netleştirmesini iste.
+İşlem başarılı olursa kullanıcıyı bilgilendir. Bir müşteri veya ürün adı belirsizse veya bulunamazsa, kullanıcıdan netleştirmesini iste. Yeni bir müşteri eklerken isim ve e-posta adresi, yeni bir ürün eklerken ise tüm gerekli bilgiler (isim, tip, fiyat, maliyet vb.) eksikse, kullanıcıdan bu bilgileri iste.
 ÖNEMLİ: Bir satış, gider veya stok hareketini silmek için kullanıcıdan işlem numarasını (ID) isteyebilirsin veya konuşma geçmişindeki verilerden bu ID'yi bulabilirsin. Örneğin, "ORD001 numaralı satışı sil".`;
 
 export async function chatWithAssistant(
@@ -220,10 +220,13 @@ export async function chatWithAssistant(
       case 'addCustomer':
         action = {
           type: 'addCustomer',
-          payload: toolInput,
+          payload: {
+            name: toolInput.customerName,
+            email: toolInput.email,
+          },
         };
         if (!textResponse) {
-          textResponse = `${toolInput.name} adlı yeni müşteri eklendi.`;
+          textResponse = `${toolInput.customerName} adlı yeni müşteri eklendi.`;
         }
         break;
       

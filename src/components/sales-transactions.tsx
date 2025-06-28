@@ -1,21 +1,51 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ShoppingCart } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import Sales from "./sales"
+import Restaurant from "./restaurant"
+import type { Order, Customer } from "@/lib/types"
 
-export default function SalesTransactions() {
+interface SalesTransactionsProps {
+  creditSales: Order[];
+  cashSales: Order[];
+  customers: Customer[];
+  onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'>) => void;
+  onUpdateSale: (data: Order) => void;
+  onDeleteSale: (id: string) => void;
+  onAddCashSale: (data: { description: string, total: number }) => void;
+}
+
+export default function SalesTransactions({
+  creditSales,
+  cashSales,
+  customers,
+  onAddSale,
+  onUpdateSale,
+  onDeleteSale,
+  onAddCashSale
+}: SalesTransactionsProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><ShoppingCart /> Satış İşlemleri</CardTitle>
-        <CardDescription>Peşin ve veresiye satışları buradan yönetebilirsiniz.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-48 border-2 border-dashed rounded-lg">
-            <p className="text-lg font-medium">Çok Yakında</p>
-            <p>Bu özellik geliştirme aşamasındadır.</p>
-        </div>
-      </CardContent>
-    </Card>
+    <Tabs defaultValue="credit" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="credit">Veresiye İşlemleri</TabsTrigger>
+        <TabsTrigger value="cash">Peşin Satışlar (Tezgah)</TabsTrigger>
+      </TabsList>
+      <TabsContent value="credit">
+        <Sales 
+          orders={creditSales}
+          customers={customers}
+          onAddSale={onAddSale}
+          onUpdateSale={onUpdateSale}
+          onDeleteSale={onDeleteSale}
+        />
+      </TabsContent>
+      <TabsContent value="cash">
+        <Restaurant 
+          cashSales={cashSales}
+          onAddCashSale={onAddCashSale}
+          onDeleteSale={onDeleteSale}
+        />
+      </TabsContent>
+    </Tabs>
   )
 }

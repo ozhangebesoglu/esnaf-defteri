@@ -66,3 +66,19 @@ export type CashboxHistory = {
   closing: number;
   difference: number;
 };
+
+export type Supplier = {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+};
+
+export type Staff = {
+  id: string;
+  name: string;
+  position: string;
+  salary: number;
+  phone?: string;
+};

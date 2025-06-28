@@ -48,9 +48,11 @@ import {
   initialStockAdjustments,
   initialCashboxHistory,
   initialAlerts,
+  initialSuppliers,
+  initialStaff,
   salesData
 } from '@/lib/data';
-import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert } from '@/lib/types';
+import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert, Supplier, Staff as StaffType } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 
 type View = 
@@ -106,6 +108,8 @@ export default function DashboardPage() {
   const [stockAdjustments, setStockAdjustments] = useState<StockAdjustment[]>(initialStockAdjustments);
   const [cashboxHistory, setCashboxHistory] = useState<CashboxHistory[]>(initialCashboxHistory);
   const [alerts, setAlerts] = useState<MonitoringAlert[]>(initialAlerts);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
+  const [staff, setStaff] = useState<StaffType[]>(initialStaff);
   const [chatHistory, setChatHistory] = useState<Message[]>([
     {
       role: 'model',
@@ -128,7 +132,6 @@ export default function DashboardPage() {
 
     setCustomers(prev => [...prev, newCustomer]);
 
-    // If there's an initial debt, add a corresponding "sale" for it to keep the ledger consistent.
     if (data.initialDebt && data.initialDebt > 0) {
         const newOrder: Order = {
             id: generateId('ORD'),
@@ -184,7 +187,6 @@ export default function DashboardPage() {
     };
     
     setOrders(prev => [newOrder, ...prev]);
-    // Update customer balance
     setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, balance: c.balance + data.total } : c));
     toast({ title: "Satış Eklendi", description: "Yeni satış kaydı oluşturuldu." });
   };
@@ -198,19 +200,16 @@ export default function DashboardPage() {
       customerName: customer.name,
       description: data.description || 'Nakit Ödeme',
       items: 1,
-      total: -data.total, // Payment is a negative total
+      total: -data.total,
       status: 'Tamamlandı',
       date: new Date().toISOString(),
     };
     
     setOrders(prev => [newPayment, ...prev]);
-    // Update customer balance
     setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, balance: c.balance - data.total } : c));
     toast({ title: "Ödeme Alındı", description: `${customer.name} için ödeme kaydedildi.` });
   };
   const handleUpdateSale = (data: Order) => {
-    // This is complex because it might affect old and new customer balances.
-    // For this version, we will just update the order details.
     setOrders(prev => prev.map(o => o.id === data.id ? data : o));
     toast({ title: "Satış Güncellendi", description: `${data.id} numaralı satış güncellendi.` });
   };
@@ -218,20 +217,19 @@ export default function DashboardPage() {
     const orderToDelete = orders.find(o => o.id === id);
     if (!orderToDelete) return;
 
-    // Revert customer balance if it's a credit sale
     if(orderToDelete.customerId !== 'CASH_SALE') {
         setCustomers(prev => prev.map(c => c.id === orderToDelete.customerId ? { ...c, balance: c.balance - orderToDelete.total } : c));
     }
 
     setOrders(prev => prev.filter(o => o.id !== id));
-    toast({ title: "Satış Silindi", description: "Satış kaydı silindi.", variant: "destructive" });
+    toast({ title: "İşlem Silindi", description: "Satış veya ödeme kaydı silindi.", variant: "destructive" });
   };
 
   // Cash Sales
   const handleAddCashSale = (data: { description: string, total: number }) => {
     const newOrder: Order = {
       id: generateId('CSH'),
-      customerId: 'CASH_SALE', // Special ID for non-customer sales
+      customerId: 'CASH_SALE',
       customerName: 'Peşin Satış',
       date: new Date().toISOString(),
       status: 'Tamamlandı',
@@ -241,7 +239,6 @@ export default function DashboardPage() {
     };
     
     setOrders(prev => [newOrder, ...prev]);
-    // Note: This does not affect any customer's balance.
     toast({ title: "Peşin Satış Eklendi", description: "Yeni peşin satış kaydı oluşturuldu." });
   };
 
@@ -272,12 +269,10 @@ export default function DashboardPage() {
       date: new Date().toISOString(),
     };
     setStockAdjustments(prev => [newAdjustment, ...prev]);
-    // Update product stock
     setProducts(prev => prev.map(p => p.id === data.productId ? { ...p, stock: p.stock + data.quantity } : p));
     toast({ title: "Stok Hareketi Eklendi" });
   };
   const handleUpdateStockAdjustment = (data: StockAdjustment) => {
-    // Logic for reverting old stock and applying new one would be needed for full accuracy
     setStockAdjustments(prev => prev.map(a => a.id === data.id ? data : a));
     toast({ title: "Stok Hareketi Güncellendi" });
   };
@@ -285,17 +280,47 @@ export default function DashboardPage() {
     const adjToDelete = stockAdjustments.find(a => a.id === id);
     if(!adjToDelete) return;
 
-    // Revert product stock
     setProducts(prev => prev.map(p => p.id === adjToDelete.productId ? { ...p, stock: p.stock - adjToDelete.quantity } : p));
 
     setStockAdjustments(prev => prev.filter(a => a.id !== id));
     toast({ title: "Stok Hareketi Silindi", variant: "destructive" });
   };
+  
+  // Suppliers
+  const handleAddSupplier = (data: Omit<Supplier, 'id'>) => {
+    const newSupplier = { ...data, id: generateId('SUP') };
+    setSuppliers(prev => [...prev, newSupplier]);
+    toast({ title: "Tedarikçi Eklendi", description: `${newSupplier.name} başarıyla eklendi.` });
+  };
+  const handleUpdateSupplier = (data: Supplier) => {
+    setSuppliers(prev => prev.map(s => s.id === data.id ? data : s));
+    toast({ title: "Tedarikçi Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+  };
+  const handleDeleteSupplier = (id: string) => {
+    setSuppliers(prev => prev.filter(s => s.id !== id));
+    toast({ title: "Tedarikçi Silindi", variant: "destructive" });
+  };
+
+  // Staff
+  const handleAddStaff = (data: Omit<StaffType, 'id'>) => {
+    const newStaff = { ...data, id: generateId('STA') };
+    setStaff(prev => [...prev, newStaff]);
+    toast({ title: "Personel Eklendi", description: `${newStaff.name} başarıyla eklendi.` });
+  };
+  const handleUpdateStaff = (data: StaffType) => {
+    setStaff(prev => prev.map(s => s.id === data.id ? data : s));
+    toast({ title: "Personel Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+  };
+  const handleDeleteStaff = (id: string) => {
+    setStaff(prev => prev.filter(s => s.id !== id));
+    toast({ title: "Personel Silindi", variant: "destructive" });
+  };
+
 
   // Cashbox Logic
   const openingBalance = cashboxHistory[0]?.closing || 0;
   const cashInToday = orders.filter(o => (o.customerId === 'CASH_SALE' || o.total < 0) && isToday(o.date)).reduce((sum, o) => sum + Math.abs(o.total), 0);
-  const cashOutToday = expenses.filter(e => isToday(e.date)).reduce((sum, e) => sum + e.amount, 0); // Assuming all expenses are cash
+  const cashOutToday = expenses.filter(e => isToday(e.date)).reduce((sum, e) => sum + e.amount, 0);
   const expectedBalance = openingBalance + cashInToday - cashOutToday;
 
   const handleDayClose = (actualBalance: number) => {
@@ -315,6 +340,10 @@ export default function DashboardPage() {
       description: `Kasa sayımı tamamlandı. Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(difference)}`,
     });
   };
+  
+  const creditSales = orders.filter(o => o.customerId !== 'CASH_SALE');
+  const cashSales = orders.filter(o => o.customerId === 'CASH_SALE');
+
 
   const renderView = () => {
     switch (activeView) {
@@ -331,18 +360,6 @@ export default function DashboardPage() {
                   onUpdateStockAdjustment={handleUpdateStockAdjustment}
                   onDeleteStockAdjustment={handleDeleteStockAdjustment}
                 />;
-      case 'mali-isler':
-        return <Financials 
-                  orders={orders.filter(o => o.customerId !== 'CASH_SALE')}
-                  customers={customers}
-                  expenses={expenses}
-                  onAddSale={handleAddSale}
-                  onUpdateSale={handleUpdateSale}
-                  onDeleteSale={handleDeleteSale}
-                  onAddExpense={handleAddExpense}
-                  onUpdateExpense={handleUpdateExpense}
-                  onDeleteExpense={handleDeleteExpense}
-                />;
       case 'musteri-yonetimi':
         return <Customers 
                   customers={customers}
@@ -354,13 +371,40 @@ export default function DashboardPage() {
                   onAddSale={handleAddSale}
                />;
       case 'satis-islemleri':
-        return <SalesTransactions />;
+        return <SalesTransactions 
+                  creditSales={creditSales}
+                  cashSales={cashSales}
+                  customers={customers}
+                  onAddSale={handleAddSale}
+                  onUpdateSale={handleUpdateSale}
+                  onDeleteSale={handleDeleteSale}
+                  onAddCashSale={handleAddCashSale}
+                />;
       case 'tedarikciler':
-        return <Suppliers />;
+        return <Suppliers 
+                 suppliers={suppliers}
+                 onAddSupplier={handleAddSupplier}
+                 onUpdateSupplier={handleUpdateSupplier}
+                 onDeleteSupplier={handleDeleteSupplier}
+                />;
       case 'personel':
-        return <Staff />;
+        return <Staff 
+                  staff={staff}
+                  onAddStaff={handleAddStaff}
+                  onUpdateStaff={handleUpdateStaff}
+                  onDeleteStaff={handleDeleteStaff}
+               />;
       case 'kampanyalar':
         return <Campaigns />;
+      case 'mali-isler':
+        return <Financials 
+                  expenses={expenses}
+                  onAddExpense={handleAddExpense}
+                  onUpdateExpense={handleUpdateExpense}
+                  onDeleteExpense={handleDeleteExpense}
+                />;
+      case 'raporlar':
+        return <Reports customers={customers} expenses={expenses} orders={orders} products={products} />;
       case 'kasa':
         return <Cashbox 
                   history={cashboxHistory}
@@ -370,8 +414,6 @@ export default function DashboardPage() {
                   expectedBalance={expectedBalance}
                   onDayClose={handleDayClose}
                />;
-      case 'raporlar':
-        return <Reports customers={customers} expenses={expenses} orders={orders} products={products} />;
       case 'uyarilar':
         return <Monitoring alerts={alerts} />;
       case 'yapay-zeka':
@@ -427,6 +469,16 @@ export default function DashboardPage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
+                onClick={() => setActiveView('satis-islemleri')}
+                isActive={activeView === 'satis-islemleri'}
+                tooltip="Satış İşlemleri"
+              >
+                <ShoppingCart />
+                <span>Satış İşlemleri</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
                 onClick={() => setActiveView('urun-yonetimi')}
                 isActive={activeView === 'urun-yonetimi'}
                 tooltip="Ürün Yönetimi"
@@ -447,15 +499,25 @@ export default function DashboardPage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('satis-islemleri')}
-                isActive={activeView === 'satis-islemleri'}
-                tooltip="Satış İşlemleri"
+                onClick={() => setActiveView('mali-isler')}
+                isActive={activeView === 'mali-isler'}
+                tooltip="Mali İşler (Giderler)"
               >
-                <ShoppingCart />
-                <span>Satış İşlemleri</span>
+                <Banknote />
+                <span>Mali İşler</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('kasa')}
+                isActive={activeView === 'kasa'}
+                tooltip="Kasa"
+              >
+                <Wallet />
+                <span>Kasa</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setActiveView('tedarikciler')}
                 isActive={activeView === 'tedarikciler'}
@@ -485,16 +547,6 @@ export default function DashboardPage() {
                 <span>Kampanyalar</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => setActiveView('mali-isler')}
-                isActive={activeView === 'mali-isler'}
-                tooltip="Mali İşler"
-              >
-                <Banknote />
-                <span>Mali İşler</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setActiveView('raporlar')}
@@ -503,16 +555,6 @@ export default function DashboardPage() {
               >
                 <AreaChart />
                 <span>Raporlar</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => setActiveView('kasa')}
-                isActive={activeView === 'kasa'}
-                tooltip="Kasa"
-              >
-                <Wallet />
-                <span>Kasa</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

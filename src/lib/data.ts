@@ -1,4 +1,4 @@
-import { Order, Sale, StockAdjustment, Customer, MonitoringAlert, Product, Expense, CashboxHistory } from './types';
+import { Order, Sale, StockAdjustment, Customer, MonitoringAlert, Product, Expense, CashboxHistory, Supplier, Staff } from './types';
 
 export const salesData: Sale[] = [
   { month: 'Oca', revenue: 4000 },
@@ -24,6 +24,8 @@ export const initialOrders: Order[] = [
   { id: 'ORD003', customerId: 'CUS003', customerName: 'Mehmet Demir', description: '5 adet tavuk but', items: 5, total: 210.25, status: 'Tamamlandı', date: new Date('2023-10-26T17:15:00').toISOString() },
   { id: 'ORD004', customerId: 'CUS004', customerName: 'Fatma Şahin', description: '1kg antrikot', items: 2, total: 88.75, status: 'İptal Edildi', date: new Date('2023-10-26T14:00:00').toISOString() },
   { id: 'ORD005', customerId: 'CUS005', customerName: 'Mustafa Arslan', description: '2kg kuzu pirzola', items: 4, total: 150.00, status: 'Tamamlandı', date: new Date('2023-10-25T16:20:00').toISOString() },
+  { id: 'CSH001', customerId: 'CASH_SALE', customerName: 'Peşin Satış', description: 'Öğle Yemeği', items: 1, total: 250.00, status: 'Tamamlandı', date: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString() },
+  { id: 'CSH002', customerId: 'CASH_SALE', customerName: 'Peşin Satış', description: '1 adet sucuk, 2 ekmek', items: 2, total: 180.00, status: 'Tamamlandı', date: new Date().toISOString() },
 ];
 
 export const initialStockAdjustments: StockAdjustment[] = [
@@ -61,4 +63,15 @@ export const initialCashboxHistory: CashboxHistory[] = [
   { id: 'CBH001', date: new Date('2023-10-26').toISOString(), opening: 500.00, cashIn: 2350.50, cashOut: 450.00, closing: 2400.50, difference: 0 },
   { id: 'CBH002', date: new Date('2023-10-25').toISOString(), opening: 450.25, cashIn: 1800.75, cashOut: 750.00, closing: 1501.00, difference: 1.00 },
   { id: 'CBH003', date: new Date('2023-10-24').toISOString(), opening: 610.00, cashIn: 2100.00, cashOut: 200.00, closing: 2505.00, difference: -5.00 },
+];
+
+export const initialSuppliers: Supplier[] = [
+    { id: 'SUP001', name: 'Merkez Et A.Ş.', contactPerson: 'Hakan Güçlü', phone: '0555 111 2233', email: 'hakan@merkezet.com' },
+    { id: 'SUP002', name: 'Baharat Kralı Ltd.', contactPerson: 'Zeynep Bahar', phone: '0533 444 5566', email: 'zeynep@baharatkrali.com' },
+    { id: 'SUP003', name: 'Ambalaj Dünyası', contactPerson: 'Ahmet Kutu', phone: '0544 777 8899', email: 'ahmet@ambalajdunyasi.com' },
+];
+
+export const initialStaff: Staff[] = [
+    { id: 'STA001', name: 'Ali Veli', position: 'Kasap Ustası', salary: 25000, phone: '0532 987 6543' },
+    { id: 'STA002', name: 'Ayşe Fatma', position: 'Tezgahtar', salary: 18000, phone: '0535 123 4567' },
 ];

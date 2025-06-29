@@ -17,9 +17,18 @@ export const productSchema = z.object({
   type: z.enum(['beef', 'processed', 'chicken', 'dairy'], {
     required_error: "Lütfen bir ürün tipi seçin.",
   }),
-  cost: z.coerce.number().positive("Maliyet pozitif bir sayı olmalıdır."),
-  price: z.coerce.number().positive("Satış fiyatı pozitif bir sayı olmalıdır."),
-  lowStockThreshold: z.coerce.number().int().min(0, "Stok eşiği negatif olamaz."),
+  cost: z.preprocess(
+    (val) => val === "" ? undefined : val,
+    z.coerce.number({invalid_type_error: "Geçerli bir sayı girin.", required_error: "Maliyet fiyatı zorunludur."}).positive("Maliyet pozitif bir sayı olmalıdır.")
+  ),
+  price: z.preprocess(
+    (val) => val === "" ? undefined : val,
+    z.coerce.number({invalid_type_error: "Geçerli bir sayı girin.", required_error: "Satış fiyatı zorunludur."}).positive("Satış fiyatı pozitif bir sayı olmalıdır.")
+  ),
+  lowStockThreshold: z.preprocess(
+    (val) => val === "" ? undefined : val,
+    z.coerce.number({invalid_type_error: "Geçerli bir sayı girin.", required_error: "Düşük stok eşiği zorunludur."}).int().min(0, "Stok eşiği negatif olamaz.")
+  ),
   stock: z.coerce.number().int().optional(),
 })
 
@@ -32,7 +41,7 @@ interface ProductFormProps {
 export function ProductForm({ product, setOpen, onSave }: ProductFormProps) {
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
-    defaultValues: product || { name: "", type: "beef", cost: '' as any, price: '' as any, lowStockThreshold: 10 },
+    defaultValues: product || { name: "", type: "beef", cost: '' as any, price: '' as any, lowStockThreshold: '' as any },
   })
 
   function onSubmit(values: z.infer<typeof productSchema>) {
@@ -84,7 +93,7 @@ export function ProductForm({ product, setOpen, onSave }: ProductFormProps) {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Maliyet Fiyatı (₺)</FormLabel>
-                <FormControl><Input type="number" step="0.01" placeholder="örn., 600.00" {...field} /></FormControl>
+                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}
@@ -95,7 +104,7 @@ export function ProductForm({ product, setOpen, onSave }: ProductFormProps) {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Satış Fiyatı (₺)</FormLabel>
-                <FormControl><Input type="number" step="0.01" placeholder="örn., 850.00" {...field} /></FormControl>
+                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}
@@ -107,7 +116,7 @@ export function ProductForm({ product, setOpen, onSave }: ProductFormProps) {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Düşük Stok Eşiği (Adet/Kg)</FormLabel>
-                <FormControl><Input type="number" placeholder="örn., 5" {...field} /></FormControl>
+                <FormControl><Input type="number" {...field} /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}

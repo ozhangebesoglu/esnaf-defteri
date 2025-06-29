@@ -14,7 +14,7 @@ import { ProductForm } from "./product-form"
 
 interface ProductsProps {
     products: Product[];
-    onAddProduct: (data: Omit<Product, 'id' | 'stock'>) => void;
+    onAddProduct: (data: Omit<Product, 'id' | 'stock' | 'userId'>) => void;
     onUpdateProduct: (data: Product) => void;
     onDeleteProduct: (id: string) => void;
 }

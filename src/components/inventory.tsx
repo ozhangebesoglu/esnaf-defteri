@@ -11,10 +11,10 @@ import type { Product, StockAdjustment } from "@/lib/types"
 interface InventoryProps {
     products: Product[];
     stockAdjustments: StockAdjustment[];
-    onAddProduct: (data: Omit<Product, 'id' | 'stock'>) => void;
+    onAddProduct: (data: Omit<Product, 'id' | 'stock' | 'userId'>) => void;
     onUpdateProduct: (data: Product) => void;
     onDeleteProduct: (id: string) => void;
-    onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void;
+    onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date' | 'userId'>) => void;
     onUpdateStockAdjustment: (data: StockAdjustment) => void;
     onDeleteStockAdjustment: (id: string) => void;
 }

@@ -48,12 +48,6 @@ import Campaigns from '@/components/campaigns';
 import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert, Supplier, Staff as StaffType, Sale } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 
-const initialAlerts: MonitoringAlert[] = [
-  { id: 'ALT001', severity: 'high', title: 'Negatif Stok: Antrikot', description: 'Antrikot stok adedi -2. Lütfen hemen inceleyin.', timestamp: new Date('2023-10-27T09:15:32').toISOString() },
-  { id: 'ALT002', severity: 'medium', title: 'Yüksek İndirim Uygulandı', description: 'ORD003 numaralı siparişe %50 indirim uygulandı, standart %20 limiti aşıldı.', timestamp: new Date('2023-10-26T14:30:15').toISOString() },
-  { id: 'ALT003', severity: 'low', title: 'Gecikmiş Bakiye Uyarısı', description: 'Ayşe Kaya adlı müşterinin 30 günden uzun süredir 75.50 TL borcu bulunmaktadır.', timestamp: new Date('2023-10-25T11:00:00').toISOString() },
-];
-
 type View = 
   'anasayfa' | 
   'urun-yonetimi' | 
@@ -107,7 +101,7 @@ export default function DashboardPage() {
   const [cashboxHistory, setCashboxHistory] = useState<CashboxHistory[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [staff, setStaff] = useState<StaffType[]>([]);
-  const [alerts, setAlerts] = useState<MonitoringAlert[]>(initialAlerts);
+  const [alerts, setAlerts] = useState<MonitoringAlert[]>([]);
   
   const salesData: Sale[] = useMemo(() => {
     const monthNames = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -173,6 +167,66 @@ export default function DashboardPage() {
     return () => unsubscribes.forEach(unsub => unsub());
 
   }, [user]);
+
+  // --- Alerts Generation ---
+  useEffect(() => {
+    if (!user) return;
+
+    const generatedAlerts: MonitoringAlert[] = [];
+
+    // 1. Negative & Low Stock Alerts
+    products.forEach(product => {
+      if (product.stock < 0) {
+        generatedAlerts.push({
+          id: `neg-stock-${product.id}`,
+          userId: user.uid,
+          severity: 'high',
+          title: `Negatif Stok: ${product.name}`,
+          description: `${product.name} stok adedi ${product.stock}. Lütfen hemen inceleyin.`,
+          timestamp: new Date().toISOString()
+        });
+      } else if (product.stock > 0 && product.stock <= product.lowStockThreshold) {
+        generatedAlerts.push({
+          id: `low-stock-${product.id}`,
+          userId: user.uid,
+          severity: 'medium',
+          title: `Düşük Stok: ${product.name}`,
+          description: `${product.name} stok adedi ${product.stock}, düşük stok eşiği olan ${product.lowStockThreshold}'e ulaştı.`,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    // 2. Overdue Balance Alert
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    customers.forEach(customer => {
+      if (customer.balance > 0) {
+        const customerTransactions = orders.filter(o => o.customerId === customer.id);
+        if (customerTransactions.length > 0) {
+          const lastTransactionDate = new Date(customerTransactions[0].date); // Orders are sorted by date desc
+          if (lastTransactionDate < thirtyDaysAgo) {
+            generatedAlerts.push({
+              id: `overdue-${customer.id}`,
+              userId: user.uid,
+              severity: 'low',
+              title: `Gecikmiş Bakiye: ${customer.name}`,
+              description: `${customer.name} adlı müşterinin ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customer.balance)} borcu var ve 30 günden uzun süredir işlem yapmadı.`,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+      }
+    });
+    
+    // Sort alerts by severity
+    const severityOrder = { high: 0, medium: 1, low: 2 };
+    generatedAlerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+    setAlerts(generatedAlerts);
+
+  }, [products, customers, orders, user]);
   
   // --- Handlers ---
   const getCollectionRef = (collectionName: string) => collection(db, collectionName);

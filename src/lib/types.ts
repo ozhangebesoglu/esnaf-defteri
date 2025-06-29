@@ -34,8 +34,7 @@ export type Customer = FirestoreDoc & {
   balance: number;
 };
 
-export type MonitoringAlert = {
-  id: string;
+export type MonitoringAlert = FirestoreDoc & {
   severity: 'low' | 'medium' | 'high';
   title: string;
   description: string;

@@ -25,7 +25,8 @@ import {
   deleteStockAdjustmentTool,
 } from '@/ai/tools/esnaf-tools';
 import type { Message, ChatHistory } from '@/lib/types';
-import type { MessageData, ToolRequest, ToolRequestPart, ToolResponsePart } from 'genkit';
+// Import correct Genkit types for robust type checking
+import type { MessageData, ToolRequestPart, ToolResponsePart } from 'genkit';
 
 
 const allTools = [
@@ -88,6 +89,7 @@ export async function getChatHistory(userId: string): Promise<Message[]> {
   return [];
 }
 
+// Rewritten for clarity and type safety
 const toGenkitMessages = (history: Message[]): MessageData[] => {
   const messages: MessageData[] = [];
   for (const m of history) {
@@ -95,13 +97,17 @@ const toGenkitMessages = (history: Message[]): MessageData[] => {
       messages.push({ role: 'user', content: [{ text: m.content as string }] });
     } else if (m.role === 'model') {
       const modelContent = m.content as any;
+      // Check if the content is a model's request to use tools
       if (modelContent?.toolRequests) {
-        const parts: ToolRequestPart[] = modelContent.toolRequests.map((req: any) => ({ toolRequest: req }));
+        // The content is already an array of ToolRequestPart, no mapping needed.
+        const parts: ToolRequestPart[] = modelContent.toolRequests;
         messages.push({ role: 'model', content: parts });
       } else {
+        // This is a standard text response from the model
         messages.push({ role: 'model', content: [{ text: m.content as string }] });
       }
     } else if (m.role === 'tool') {
+      // The content is an array of our custom tool response shape
       const toolContent = m.content as Array<{ toolCallId: string; output: any; name: string; }>;
       const parts: ToolResponsePart[] = toolContent.map(tc => ({ 
           toolResponse: {
@@ -131,26 +137,35 @@ export async function chatWithAssistant(
     tools: allTools,
   });
 
-  const toolRequests = llmResponse.toolRequests;
+  const toolRequests = llmResponse.toolRequests; // This is an array of ToolRequestPart
 
   if (toolRequests && toolRequests.length > 0) {
+    // Save the model's request to use tools to our history
     chatHistory.push({ role: 'model', content: { toolRequests } });
 
     const toolResponses = [];
+    // Loop through each part of the tool request from the LLM
     for (const toolRequest of toolRequests) {
-      const tool = allTools.find(t => t.name === toolRequest.name);
+      // Find the corresponding tool from our list of available tools
+      const tool = allTools.find(t => t.name === toolRequest.toolRequest.name);
       if (tool) {
-        const toolInputWithUser = { ...(toolRequest.input as object), userId };
+        // Add the userId to the tool's input arguments
+        const toolInputWithUser = { ...(toolRequest.toolRequest.input as object), userId };
         const output = await tool.fn(toolInputWithUser);
-        toolResponses.push({ toolCallId: toolRequest.toolCallId, output, name: tool.name });
+        // Prepare the response to send back to the LLM
+        toolResponses.push({ toolCallId: toolRequest.toolRequest.toolCallId, output, name: tool.name });
       } else {
-         console.error(`Tool not found: ${toolRequest.name}`);
-         toolResponses.push({ toolCallId: toolRequest.toolCallId, output: `Error: Tool '${toolRequest.name}' not found.`, name: toolRequest.name });
+         const errorMsg = `Error: Tool '${toolRequest.toolRequest.name}' not found.`;
+         console.error(errorMsg);
+         // Inform the LLM that the tool was not found
+         toolResponses.push({ toolCallId: toolRequest.toolRequest.toolCallId, output: errorMsg, name: toolRequest.toolRequest.name });
       }
     }
 
+    // Save the results of the tool executions to our history
     chatHistory.push({ role: 'tool', content: toolResponses });
 
+    // Send the tool results back to the LLM to get a final, user-facing response
     const finalLlmResponse = await ai.generate({
         messages: toGenkitMessages(chatHistory),
         system: systemPrompt,
@@ -163,6 +178,7 @@ export async function chatWithAssistant(
     return { textResponse: finalResponseText };
 
   } else {
+    // The LLM responded with text directly, no tools needed
     const finalResponseText = llmResponse.text;
     chatHistory.push({ role: 'model', content: finalResponseText });
     await setDoc(historyRef, { userId, messages: chatHistory });

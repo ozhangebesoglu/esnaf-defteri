@@ -2,68 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if the user is the owner of the document.
-    function isOwner(docData) {
-      return request.auth.uid == docData.userId;
-    }
-
-    // Helper function to check if the incoming data has the correct owner.
-    function isCreatingAsOwner(requestData) {
-      return request.auth.uid == requestData.userId;
-    }
-
-    // chatHistories: The document ID is the user's ID.
-    match /chatHistories/{userId} {
-      allow read, write: if request.auth.uid == userId;
-    }
-
-    // customers: Users can manage their own customers.
-    match /customers/{customerId} {
-      allow read, update, delete: if isOwner(resource.data);
-      allow create: if isCreatingAsOwner(request.resource.data);
-    }
-
-    // products: Users can manage their own products.
-    match /products/{productId} {
-      allow read, update, delete: if isOwner(resource.data);
-      allow create: if isCreatingAsOwner(request.resource.data);
-    }
-    
-    // orders: Users can manage their own orders.
-    match /orders/{orderId} {
-      allow read, update, delete: if isOwner(resource.data);
-      allow create: if isCreatingAsOwner(request.resource.data);
-    }
-
-    // expenses: Users can manage their own expenses.
-    match /expenses/{expenseId} {
-      allow read, update, delete: if isOwner(resource.data);
-      allow create: if isCreatingAsOwner(request.resource.data);
-    }
-
-    // stockAdjustments: Users can manage their own stock adjustments.
-    match /stockAdjustments/{adjustmentId} {
-      allow read, update, delete: if isOwner(resource.data);
-      allow create: if isCreatingAsOwner(request.resource.data);
-    }
-
-    // cashboxHistory: Users can manage their own cashbox history.
-    match /cashboxHistory/{entryId} {
-        allow read, update, delete: if isOwner(resource.data);
-        allow create: if isCreatingAsOwner(request.resource.data);
-    }
-
-    // suppliers: Users can manage their own suppliers.
-    match /suppliers/{supplierId} {
-        allow read, update, delete: if isOwner(resource.data);
-        allow create: if isCreatingAsOwner(request.resource.data);
-    }
-
-    // staff: Users can manage their own staff.
-    match /staff/{staffId} {
-        allow read, update, delete: if isOwner(resource.data);
-        allow create: if isCreatingAsOwner(request.resource.data);
+    // WARNING: These rules are insecure and for testing purposes only.
+    // They allow any client to read and write to your entire database.
+    // You should secure your database before deploying to production.
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }

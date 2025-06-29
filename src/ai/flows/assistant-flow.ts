@@ -71,12 +71,38 @@ export async function getChatHistory(userId: string): Promise<Message[]> {
   const historySnap = await getDoc(historyRef);
 
   if (historySnap.exists()) {
-    return (historySnap.data() as ChatHistory).messages;
+    const messages = (historySnap.data() as ChatHistory).messages;
+    // Defensive check: If history is not empty and doesn't start with a user message,
+    // it's corrupt. Return an empty array to start fresh.
+    if (messages.length > 0 && messages[0].role !== 'user') {
+      console.warn(`Corrupt chat history for user ${userId}, starting fresh.`);
+      return [];
+    }
+    return messages;
   }
   
   return [];
 }
 
+const toGenkitMessages = (history: Message[]) => {
+  return history.map(m => {
+    if (m.role === 'user') return { role: 'user' as const, content: [{ text: m.content as string }] };
+    if (m.role === 'model') {
+        const modelContent = m.content as any;
+        if (modelContent && typeof modelContent === 'object' && modelContent.toolRequests) {
+            const parts = modelContent.toolRequests.map((req: any) => ({ toolRequest: req }));
+            return { role: 'model' as const, content: parts };
+        }
+        return { role: 'model' as const, content: [{ text: m.content as string }] };
+    }
+    if (m.role === 'tool') {
+        const toolContent = m.content as Array<{ toolCallId: string; output: any }>;
+        return { role: 'tool' as const, content: toolContent.map(tc => ({ toolResponse: tc })) };
+    }
+    // Should not happen, but filter it out just in case
+    return null;
+  }).filter((m): m is NonNullable<typeof m> => m !== null);
+}
 
 export async function chatWithAssistant(
   input: ChatWithAssistantInput
@@ -84,42 +110,22 @@ export async function chatWithAssistant(
   const { newMessage, userId } = input;
   const historyRef = doc(db, 'chatHistories', userId);
 
-  // 1. Load history
-  const historySnap = await getDoc(historyRef);
-  let chatHistory: Message[] = historySnap.exists()
-    ? (historySnap.data() as ChatHistory).messages
-    : [];
+  // 1. Load history using the new defensive function.
+  let chatHistory = await getChatHistory(userId);
 
-  // 2. Append new user message
+  // 2. Append new user message. Now we are certain history either is empty or starts with 'user'.
   chatHistory.push({ role: 'user', content: newMessage });
   
-  // 3. Start conversation loop
-  const initialMessages = chatHistory.map(m => {
-    if (m.role === 'user') return { role: 'user', content: [{ text: m.content as string }] };
-    if (m.role === 'model') {
-        const modelContent = m.content as any;
-        if (typeof modelContent === 'object' && modelContent.toolRequests) {
-            const parts = modelContent.toolRequests.map((req: any) => ({ toolRequest: req }));
-            return { role: 'model', content: parts };
-        }
-        return { role: 'model', content: [{ text: m.content as string }] };
-    }
-    if (m.role === 'tool') {
-        const toolContent = m.content as Array<{ toolCallId: string; output: any }>;
-        return { role: 'tool', content: toolContent.map(tc => ({ toolResponse: tc })) };
-    }
-    return m;
-  }).filter(m => m && m.role !== 'tool');
-
+  // 3. Generate response from the model
   const llmResponse = await ai.generate({
-    messages: initialMessages as any,
+    messages: toGenkitMessages(chatHistory),
     system: systemPrompt,
     tools: allTools,
   });
 
-  let finalResponse = '';
-
+  let finalResponseText = '';
   const toolRequests = llmResponse.toolRequests;
+
   if (toolRequests && toolRequests.length > 0) {
     // A tool has been requested
     chatHistory.push({ role: 'model', content: { toolRequests } });
@@ -138,41 +144,24 @@ export async function chatWithAssistant(
 
     chatHistory.push({ role: 'tool', content: toolResponses });
 
-    // Map the full history for the final prompt
-    const finalGenkitMessages = chatHistory.map(m => {
-        if (m.role === 'user') return { role: 'user', content: [{ text: m.content as string }] };
-        if (m.role === 'model') {
-            const modelContent = m.content as any;
-            if (typeof modelContent === 'object' && modelContent.toolRequests) {
-                const parts = modelContent.toolRequests.map((req: any) => ({ toolRequest: req }));
-                return { role: 'model', content: parts };
-            }
-            return { role: 'model', content: [{ text: m.content as string }] };
-        }
-        if (m.role === 'tool') {
-            const toolContent = m.content as Array<{ toolCallId: string; output: any }>;
-            return { role: 'tool', content: toolContent.map(tc => ({ toolResponse: tc })) };
-        }
-        return m;
-    });
-
+    // Call the model again with the tool responses
     const finalLlmResponse = await ai.generate({
-        messages: finalGenkitMessages as any,
+        messages: toGenkitMessages(chatHistory),
         system: systemPrompt,
         tools: allTools,
     });
     
-    finalResponse = finalLlmResponse.text;
-    chatHistory.push({ role: 'model', content: finalResponse });
+    finalResponseText = finalLlmResponse.text;
+    chatHistory.push({ role: 'model', content: finalResponseText });
   } else {
     // No tool call, just a text response
-    finalResponse = llmResponse.text;
-    chatHistory.push({ role: 'model', content: finalResponse });
+    finalResponseText = llmResponse.text;
+    chatHistory.push({ role: 'model', content: finalResponseText });
   }
 
   // 4. Save updated history
   await setDoc(historyRef, { userId, messages: chatHistory });
 
   // 5. Return final response
-  return { textResponse: finalResponse };
+  return { textResponse: finalResponseText };
 }

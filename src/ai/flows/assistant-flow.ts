@@ -138,17 +138,15 @@ export async function chatWithAssistant(
 
     const toolResponses = [];
     for (const toolRequest of toolRequests) {
-        for (const call of toolRequest.calls) {
-          const tool = allTools.find(t => t.name === call.name);
-          if (tool) {
-            const toolInputWithUser = { ...call.input, userId };
-            const output = await tool.fn(toolInputWithUser);
-            toolResponses.push({ toolCallId: call.toolCallId, output, name: call.name });
-          } else {
-             console.error(`Tool not found: ${call.name}`);
-             toolResponses.push({ toolCallId: call.toolCallId, output: `Error: Tool '${call.name}' not found.`, name: call.name });
-          }
-        }
+      const tool = allTools.find(t => t.name === toolRequest.name);
+      if (tool) {
+        const toolInputWithUser = { ...(toolRequest.input as object), userId };
+        const output = await tool.fn(toolInputWithUser);
+        toolResponses.push({ toolCallId: toolRequest.toolCallId, output, name: toolRequest.name });
+      } else {
+         console.error(`Tool not found: ${toolRequest.name}`);
+         toolResponses.push({ toolCallId: toolRequest.toolCallId, output: `Error: Tool '${toolRequest.name}' not found.`, name: toolRequest.name });
+      }
     }
 
     chatHistory.push({ role: 'tool', content: toolResponses });

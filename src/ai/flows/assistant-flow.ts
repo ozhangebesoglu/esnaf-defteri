@@ -25,6 +25,8 @@ import {
   deleteStockAdjustmentTool,
 } from '@/ai/tools/esnaf-tools';
 import type { Message, ChatHistory } from '@/lib/types';
+import type { MessageData, ToolRequestPart, ToolResponsePart } from 'genkit';
+
 
 const allTools = [
     addSaleTool,
@@ -87,25 +89,28 @@ export async function getChatHistory(userId: string): Promise<Message[]> {
   return [];
 }
 
-const toGenkitMessages = (history: Message[]) => {
+const toGenkitMessages = (history: Message[]): MessageData[] => {
   return history.map(m => {
-    if (m.role === 'user') return { role: 'user' as const, content: [{ text: m.content as string }] };
+    if (m.role === 'user') {
+      return { role: 'user', content: [{ text: m.content as string }] };
+    }
     if (m.role === 'model') {
-        const modelContent = m.content as any;
-        if (modelContent && typeof modelContent === 'object' && modelContent.toolRequests) {
-            const parts = modelContent.toolRequests.map((req: any) => ({ toolRequest: req }));
-            return { role: 'model' as const, content: parts };
-        }
-        return { role: 'model' as const, content: [{ text: m.content as string }] };
+      const modelContent = m.content as any;
+      if (modelContent?.toolRequests) {
+        const parts: ToolRequestPart[] = modelContent.toolRequests.map((req: any) => ({ toolRequest: req }));
+        return { role: 'model', content: parts };
+      }
+      return { role: 'model', content: [{ text: m.content as string }] };
     }
     if (m.role === 'tool') {
-        const toolContent = m.content as Array<{ toolCallId: string; output: any }>;
-        return { role: 'tool' as const, content: toolContent.map(tc => ({ toolResponse: tc })) };
+      const toolContent = m.content as Array<{ toolCallId: string; output: any }>;
+      const parts: ToolResponsePart[] = toolContent.map(tc => ({ toolResponse: tc }));
+      return { role: 'tool', content: parts };
     }
-    // Should not happen, but filter it out just in case
     return null;
-  }).filter((m): m is NonNullable<typeof m> => m !== null);
-}
+  }).filter((m): m is MessageData => m !== null);
+};
+
 
 export async function chatWithAssistant(
   input: ChatWithAssistantInput
@@ -126,7 +131,7 @@ export async function chatWithAssistant(
     tools: allTools,
   });
 
-  let finalResponseText = '';
+  let finalResponseText = llmResponse.text;
   const toolRequests = llmResponse.toolRequests;
 
   if (toolRequests && toolRequests.length > 0) {

@@ -82,7 +82,7 @@ export const addSaleTool = ai.defineTool(
     batch.update(customerRef, { balance: customer.balance + total });
     
     await batch.commit();
-    return `${customer.name} için ${total} TL tutarında satış başarıyla eklendi. İşlem Numarası: ${newOrderRef.id}`;
+    return `${customer.name} için ${total} TL tutarında satış başarıyla eklendi.`;
   }
 );
 
@@ -98,7 +98,7 @@ export const addCashSaleTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ description, total, userId }) => {
-     const newDocRef = await addDoc(collection(db, 'orders'), {
+     await addDoc(collection(db, 'orders'), {
       userId,
       customerId: 'CASH_SALE',
       customerName: 'Peşin Satış',
@@ -108,7 +108,7 @@ export const addCashSaleTool = ai.defineTool(
       description,
       total,
     });
-    return `${total} TL tutarında peşin satış başarıyla eklendi. İşlem Numarası: ${newDocRef.id}`;
+    return `${total} TL tutarında peşin satış başarıyla eklendi.`;
   }
 );
 
@@ -153,7 +153,7 @@ export const addPaymentTool = ai.defineTool(
     batch.update(customerRef, { balance: customer.balance - total });
 
     await batch.commit();
-    return `${customer.name} adlı müşteriden ${total} TL ödeme başarıyla alındı. İşlem Numarası: ${newPaymentRef.id}`;
+    return `${customer.name} adlı müşteriden ${total} TL ödeme başarıyla alındı.`;
   }
 );
 
@@ -172,14 +172,14 @@ export const addExpenseTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ description, amount, category, userId }) => {
-    const newDocRef = await addDoc(collection(db, 'expenses'), {
+    await addDoc(collection(db, 'expenses'), {
       userId,
       date: new Date().toISOString(),
       description,
       amount,
       category,
     });
-    return `"${description}" açıklamasıyla ${amount} TL tutarında yeni bir gider eklendi. İşlem Numarası: ${newDocRef.id}`;
+    return `"${description}" açıklamasıyla ${amount} TL tutarında yeni bir gider başarıyla eklendi.`;
   }
 );
 
@@ -237,7 +237,7 @@ export const addStockAdjustmentTool = ai.defineTool(
     batch.update(productRef, { stock: newStock });
 
     await batch.commit();
-    return `${product.name} ürünü için stok hareketi başarıyla eklendi. Yeni stok: ${newStock}. İşlem Numarası: ${newAdjRef.id}`;
+    return `${product.name} ürünü için stok hareketi başarıyla eklendi. Yeni stok: ${newStock}.`;
   }
 );
 
@@ -285,7 +285,7 @@ export const addCustomerTool = ai.defineTool(
     
     await batch.commit();
     
-    let responseMessage = `"${customerName}" adlı yeni müşteri (No: ${newCustomerRef.id}) başarıyla eklendi.`;
+    let responseMessage = `"${customerName}" adlı yeni müşteri başarıyla eklendi.`;
     if (initialDebt && initialDebt > 0) {
         responseMessage += ` Başlangıç borcu: ${initialDebt} TL.`;
     } else {
@@ -377,7 +377,7 @@ export const deleteSaleTool = ai.defineTool(
       }
       
       await batch.commit();
-      return `${saleId} numaralı işlem başarıyla silindi.`;
+      return `'${sale.description}' açıklamalı satış/ödeme işlemi başarıyla silindi.`;
   }
 );
 
@@ -398,9 +398,10 @@ export const deleteExpenseTool = ai.defineTool(
        if (!expenseSnap.exists() || expenseSnap.data().userId !== userId) {
           return `"${expenseId}" numaralı bir gider bulamadım.`;
       }
-
+      
+      const expense = expenseSnap.data() as Expense;
       await deleteDoc(expenseRef);
-      return `${expenseId} numaralı gider kaydı başarıyla silindi.`;
+      return `'${expense.description}' başlıklı gider kaydı başarıyla silindi.`;
   }
 );
 
@@ -438,6 +439,6 @@ export const deleteStockAdjustmentTool = ai.defineTool(
       }
 
       await batch.commit();
-      return `${adjustmentId} numaralı stok hareketi başarıyla silindi.`;
+      return `'${adj.description}' açıklamalı stok hareketi başarıyla silindi.`;
   }
 );

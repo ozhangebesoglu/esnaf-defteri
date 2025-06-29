@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { PlusCircle, Pencil, Trash2 } from "lucide-react"
+import { PlusCircle, Pencil, Trash2, MoreVertical } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -17,10 +17,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { Customer, Order } from "@/lib/types"
 import CustomerDetail from "./customer-detail"
 import { CustomerForm } from "./customer-form"
+import { useIsMobile } from "@/hooks/use-mobile"
+
 
 interface CustomersProps {
     customers: Customer[];
@@ -29,7 +32,7 @@ interface CustomersProps {
     onUpdateCustomer: (data: Customer) => void;
     onDeleteCustomer: (id: string) => void;
     onAddPayment: (data: { customerId: string, total: number, description?: string }) => void;
-    onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'>) => void;
+    onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'|'userId'>) => void;
 }
 
 export default function Customers({ customers, orders, onAddCustomer, onUpdateCustomer, onDeleteCustomer, onAddPayment, onAddSale }: CustomersProps) {
@@ -37,6 +40,7 @@ export default function Customers({ customers, orders, onAddCustomer, onUpdateCu
   const [selectedCustomerForEdit, setSelectedCustomerForEdit] = useState<Customer | undefined>(undefined);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [selectedCustomerIdForDetail, setSelectedCustomerIdForDetail] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const handleOpenDialog = (customer?: Customer) => {
     setSelectedCustomerForEdit(customer);
@@ -78,6 +82,87 @@ export default function Customers({ customers, orders, onAddCustomer, onUpdateCu
              onAddSale={onAddSale}
            />;
   }
+
+  const renderLoadingSkeleton = () => (
+    <div className="space-y-2">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+    </div>
+  );
+
+  const renderDesktopView = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Ad Soyad</TableHead>
+          <TableHead className="hidden sm:table-cell">E-posta</TableHead>
+          <TableHead className="text-right">Bakiye</TableHead>
+          <TableHead className="w-[100px] text-right">İşlemler</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {customers.length > 0 ? customers.map((customer) => (
+          <TableRow key={customer.id} onClick={() => handleRowClick(customer.id)} className="cursor-pointer">
+            <TableCell className="font-medium">{customer.name}</TableCell>
+            <TableCell className="hidden sm:table-cell">{customer.email || '–'}</TableCell>
+            <TableCell className={`text-right font-mono ${customer.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
+              {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customer.balance)}
+            </TableCell>
+            <TableCell className="text-right space-x-1">
+              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleOpenDialog(customer); }}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+               <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setCustomerToDelete(customer); }}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TableCell>
+          </TableRow>
+        )) : (
+           <TableRow>
+              <TableCell colSpan={4} className="h-24 text-center">Kayıtlı müşteri bulunamadı.</TableCell>
+           </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  );
+
+  const renderMobileView = () => (
+    <div className="space-y-3">
+        {customers.length > 0 ? customers.map((customer) => (
+            <Card key={customer.id} onClick={() => handleRowClick(customer.id)}>
+                <CardContent className="p-4 flex justify-between items-start">
+                    <div className="flex-1 space-y-1 pr-2">
+                        <p className="font-semibold">{customer.name}</p>
+                        <p className="text-sm text-muted-foreground">{customer.email || 'E-posta yok'}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                         <p className={`font-mono font-semibold text-base whitespace-nowrap ${customer.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                            {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customer.balance)}
+                        </p>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2" onClick={(e) => e.stopPropagation()}>
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem onClick={() => handleOpenDialog(customer)}>Düzenle</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setCustomerToDelete(customer)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                    Sil
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </CardContent>
+            </Card>
+        )) : (
+            <div className="h-24 text-center flex items-center justify-center">
+                <p className="text-muted-foreground">Kayıtlı müşteri bulunamadı.</p>
+            </div>
+        )}
+    </div>
+  );
 
   return (
     <>
@@ -121,39 +206,7 @@ export default function Customers({ customers, orders, onAddCustomer, onUpdateCu
           </Dialog>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ad Soyad</TableHead>
-                <TableHead>E-posta</TableHead>
-                <TableHead className="text-right">Bakiye</TableHead>
-                <TableHead className="w-[100px] text-right">İşlemler</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers.length > 0 ? customers.map((customer) => (
-                <TableRow key={customer.id} onClick={() => handleRowClick(customer.id)} className="cursor-pointer">
-                  <TableCell className="font-medium">{customer.name}</TableCell>
-                  <TableCell>{customer.email || '–'}</TableCell>
-                  <TableCell className={`text-right font-mono ${customer.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
-                    {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customer.balance)}
-                  </TableCell>
-                  <TableCell className="text-right space-x-1">
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleOpenDialog(customer); }}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setCustomerToDelete(customer); }}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )) : (
-                 <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">Kayıtlı müşteri bulunamadı.</TableCell>
-                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+          {isMobile === undefined ? renderLoadingSkeleton() : (isMobile ? renderMobileView() : renderDesktopView())}
         </CardContent>
       </Card>
     </>

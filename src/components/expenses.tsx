@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { PlusCircle, Loader2, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Loader2, Pencil, Trash2, MoreVertical } from "lucide-react";
 import { categorizeExpense } from "@/ai/flows/categorize-expense-flow";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Expense } from "@/lib/types";
 
 const expenseSchema = z.object({
@@ -142,7 +145,7 @@ function ExpenseForm({ expense, setOpen, onSave }: { expense?: Expense, setOpen:
 
 interface ExpensesProps {
     expenses: Expense[];
-    onAddExpense: (data: Omit<Expense, 'id' | 'date'>) => void;
+    onAddExpense: (data: Omit<Expense, 'id' | 'date'|'userId'>) => void;
     onUpdateExpense: (data: Expense) => void;
     onDeleteExpense: (id: string) => void;
 }
@@ -151,6 +154,7 @@ export default function Expenses({ expenses, onAddExpense, onUpdateExpense, onDe
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | undefined>(undefined);
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
+  const isMobile = useIsMobile();
 
   const handleOpenDialog = (expense?: Expense) => {
     setSelectedExpense(expense);
@@ -171,6 +175,94 @@ export default function Expenses({ expenses, onAddExpense, onUpdateExpense, onDe
           setExpenseToDelete(null);
       }
   }
+  
+    const renderLoadingSkeleton = () => (
+    <div className="space-y-2">
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+    </div>
+  );
+
+  const renderDesktopView = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Tarih</TableHead>
+          <TableHead>Açıklama</TableHead>
+          <TableHead>Kategori</TableHead>
+          <TableHead className="text-right">Tutar</TableHead>
+          <TableHead className="w-[100px] text-right">İşlemler</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {expenses.length > 0 ? expenses.map((expense) => (
+          <TableRow key={expense.id}>
+            <TableCell>{new Date(expense.date).toLocaleDateString('tr-TR')}</TableCell>
+            <TableCell className="font-medium">{expense.description}</TableCell>
+            <TableCell>
+              <Badge variant="outline" className={`${categoryColors[expense.category]}`}>{expense.category}</Badge>
+            </TableCell>
+            <TableCell className="text-right font-mono text-destructive">
+              {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(expense.amount)}
+            </TableCell>
+            <TableCell className="text-right space-x-1">
+              <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(expense)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setExpenseToDelete(expense)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TableCell>
+          </TableRow>
+        )) : (
+           <TableRow>
+              <TableCell colSpan={5} className="h-24 text-center">Kayıtlı gider bulunamadı.</TableCell>
+           </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  );
+
+  const renderMobileView = () => (
+    <div className="space-y-3">
+        {expenses.length > 0 ? expenses.map((expense) => (
+            <Card key={expense.id}>
+                <CardContent className="p-4 flex justify-between items-start">
+                    <div className="flex-1 space-y-1 pr-2">
+                        <p className="font-semibold">{expense.description}</p>
+                        <div className="flex items-center gap-2 pt-1">
+                            <Badge variant="outline" className={`${categoryColors[expense.category]}`}>{expense.category}</Badge>
+                            <p className="text-xs text-muted-foreground">{new Date(expense.date).toLocaleDateString('tr-TR')}</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                         <p className="font-mono font-semibold text-base whitespace-nowrap text-destructive">
+                            {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(expense.amount)}
+                        </p>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2" onClick={(e) => e.stopPropagation()}>
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem onClick={() => handleOpenDialog(expense)}>Düzenle</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setExpenseToDelete(expense)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                    Sil
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </CardContent>
+            </Card>
+        )) : (
+            <div className="h-24 text-center flex items-center justify-center">
+                <p className="text-muted-foreground">Kayıtlı gider bulunamadı.</p>
+            </div>
+        )}
+    </div>
+  );
 
   return (
     <>
@@ -214,43 +306,7 @@ export default function Expenses({ expenses, onAddExpense, onUpdateExpense, onDe
           </Dialog>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tarih</TableHead>
-                <TableHead>Açıklama</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead className="text-right">Tutar</TableHead>
-                <TableHead className="w-[100px] text-right">İşlemler</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {expenses.length > 0 ? expenses.map((expense) => (
-                <TableRow key={expense.id}>
-                  <TableCell>{new Date(expense.date).toLocaleDateString('tr-TR')}</TableCell>
-                  <TableCell className="font-medium">{expense.description}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={`${categoryColors[expense.category]}`}>{expense.category}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-destructive">
-                    {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(expense.amount)}
-                  </TableCell>
-                  <TableCell className="text-right space-x-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(expense)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setExpenseToDelete(expense)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )) : (
-                 <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">Kayıtlı gider bulunamadı.</TableCell>
-                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+          {isMobile === undefined ? renderLoadingSkeleton() : (isMobile ? renderMobileView() : renderDesktopView())}
         </CardContent>
       </Card>
     </>

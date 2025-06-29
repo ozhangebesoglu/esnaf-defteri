@@ -16,6 +16,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { ProductIcon } from "./product-icons"
 import { PlusCircle } from "lucide-react"
 import type { Product, StockAdjustment } from "@/lib/types"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Skeleton } from "./ui/skeleton"
 
 
 const stockEntrySchema = z.object({
@@ -92,12 +94,102 @@ interface StockStatusProps {
 export default function StockStatus({ products, onProductSelect, onAddStockAdjustment }: StockStatusProps) {
     const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
     const [selectedProductForEntry, setSelectedProductForEntry] = useState<Product | null>(null);
+    const isMobile = useIsMobile();
 
     const handleOpenDialog = (product: Product) => {
         setSelectedProductForEntry(product);
         setIsEntryDialogOpen(true);
     }
     
+    const renderLoadingSkeleton = () => (
+      <div className="space-y-2">
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    );
+
+    const renderDesktopView = () => (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[80px]">Ürün</TableHead>
+            <TableHead></TableHead>
+            <TableHead className="text-right">Stok Miktarı (Adet/Kg)</TableHead>
+            <TableHead className="text-center">Durum</TableHead>
+            <TableHead className="text-right w-[120px]">İşlemler</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {products.length > 0 ? products.map((product) => (
+            <TableRow key={product.id} className="group">
+              <TableCell onClick={() => onProductSelect(product.id)} className="cursor-pointer">
+                <ProductIcon type={product.type} />
+              </TableCell>
+              <TableCell onClick={() => onProductSelect(product.id)} className="font-medium cursor-pointer">{product.name}</TableCell>
+              <TableCell onClick={() => onProductSelect(product.id)} className="text-right font-mono font-medium cursor-pointer">{product.stock}</TableCell>
+              <TableCell onClick={() => onProductSelect(product.id)} className="text-center cursor-pointer">
+                {product.stock <= 0 ? (
+                   <Badge variant="destructive">Stokta Yok</Badge>
+                ) : product.stock <= product.lowStockThreshold ? (
+                  <Badge variant="destructive" className="bg-amber-500 hover:bg-amber-600">Düşük Stok</Badge>
+                ) : (
+                  <Badge variant="secondary">Yeterli</Badge>
+                )}
+              </TableCell>
+              <TableCell className="text-right">
+                <Button size="sm" variant="outline" onClick={() => handleOpenDialog(product)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Stok Ekle
+                </Button>
+              </TableCell>
+            </TableRow>
+          )) : (
+               <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">Kayıtlı ürün bulunamadı.</TableCell>
+               </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    );
+
+    const renderMobileView = () => (
+        <div className="space-y-3">
+            {products.length > 0 ? products.map((product) => (
+                <Card key={product.id}>
+                    <CardContent className="p-4 flex justify-between items-center">
+                        <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => onProductSelect(product.id)}>
+                            <ProductIcon type={product.type} />
+                            <div className="space-y-1">
+                                <p className="font-semibold">{product.name}</p>
+                                <p className="text-sm">
+                                    {product.stock <= 0 ? (
+                                       <Badge variant="destructive">Stokta Yok</Badge>
+                                    ) : product.stock <= product.lowStockThreshold ? (
+                                      <Badge variant="destructive" className="bg-amber-500">Düşük Stok</Badge>
+                                    ) : (
+                                      <Badge variant="secondary">Yeterli</Badge>
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                             <p className="font-mono font-bold text-lg">{product.stock}</p>
+                             <Button size="sm" variant="outline" onClick={() => handleOpenDialog(product)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Stok Ekle
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )) : (
+                <div className="h-24 text-center flex items-center justify-center">
+                    <p className="text-muted-foreground">Kayıtlı ürün bulunamadı.</p>
+                </div>
+            )}
+        </div>
+    );
+
   return (
     <>
       <Dialog open={isEntryDialogOpen} onOpenChange={setIsEntryDialogOpen}>
@@ -124,47 +216,7 @@ export default function StockStatus({ products, onProductSelect, onAddStockAdjus
           <CardDescription>Tüm ürünlerin anlık stok miktarları. Detay için bir ürüne, stok eklemek için butona tıklayın.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[80px]">Ürün</TableHead>
-                <TableHead></TableHead>
-                <TableHead className="text-right">Stok Miktarı (Adet/Kg)</TableHead>
-                <TableHead className="text-center">Durum</TableHead>
-                <TableHead className="text-right w-[120px]">İşlemler</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products.length > 0 ? products.map((product) => (
-                <TableRow key={product.id} className="group">
-                  <TableCell onClick={() => onProductSelect(product.id)} className="cursor-pointer">
-                    <ProductIcon type={product.type} />
-                  </TableCell>
-                  <TableCell onClick={() => onProductSelect(product.id)} className="font-medium cursor-pointer">{product.name}</TableCell>
-                  <TableCell onClick={() => onProductSelect(product.id)} className="text-right font-mono font-medium cursor-pointer">{product.stock}</TableCell>
-                  <TableCell onClick={() => onProductSelect(product.id)} className="text-center cursor-pointer">
-                    {product.stock <= 0 ? (
-                       <Badge variant="destructive">Stokta Yok</Badge>
-                    ) : product.stock <= product.lowStockThreshold ? (
-                      <Badge variant="destructive" className="bg-amber-500 hover:bg-amber-600">Düşük Stok</Badge>
-                    ) : (
-                      <Badge variant="secondary">Yeterli</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button size="sm" variant="outline" onClick={() => handleOpenDialog(product)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Stok Ekle
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )) : (
-                   <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">Kayıtlı ürün bulunamadı.</TableCell>
-                   </TableRow>
-              )}
-            </TableBody>
-          </Table>
+          {isMobile === undefined ? renderLoadingSkeleton() : (isMobile ? renderMobileView() : renderDesktopView())}
         </CardContent>
       </Card>
     </>

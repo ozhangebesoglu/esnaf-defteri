@@ -91,7 +91,31 @@ export default function Reports({ customers, expenses, orders, products }: Repor
                 <CardDescription>Belirtilen dönemde en çok ciro getiren ürünler.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
+                {/* Mobile View */}
+                <div className="space-y-3 sm:hidden">
+                    {productSales.length > 0 ? productSales.map((p) => {
+                        const productDetails = products.find(prod => prod.id === p.productId);
+                        return (
+                             <Card key={p.productId}>
+                                <CardContent className="p-4 flex items-center gap-4">
+                                     {productDetails && <ProductIcon type={productDetails.type} />}
+                                    <div className="flex-1 space-y-1">
+                                        <p className="font-semibold">{p.name}</p>
+                                        <p className="text-sm text-muted-foreground">Satış Adedi: {p.unitsSold}</p>
+                                    </div>
+                                    <p className="font-mono font-semibold">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(p.totalSales)}</p>
+                                </CardContent>
+                             </Card>
+                        )
+                    }) : (
+                        <div className="h-24 text-center flex items-center justify-center">
+                            <p className="text-muted-foreground">Rapor oluşturmak için yeterli veri yok.</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Desktop View */}
+                <Table className="hidden sm:table">
                 <TableHeader>
                     <TableRow>
                     <TableHead className="w-[80px]">Ürün</TableHead>
@@ -132,7 +156,37 @@ export default function Reports({ customers, expenses, orders, products }: Repor
                 <CardDescription>Belirtilen dönemde en çok harcama yapan müşteriler.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
+                {/* Mobile View */}
+                 <div className="space-y-3 sm:hidden">
+                    {customerPurchases.length > 0 ? customerPurchases.map((c) => {
+                        const customerDetails = customers.find(cust => cust.id === c.customerId);
+                        return (
+                            <Card key={c.customerId}>
+                                <CardContent className="p-4">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-1">
+                                            <p className="font-semibold">{c.name}</p>
+                                            <p className="text-sm text-muted-foreground">Toplam Harcama: {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(c.totalSpent)}</p>
+                                        </div>
+                                         <div className="text-right">
+                                            <p className="text-xs text-muted-foreground">Bakiye</p>
+                                             <p className={`font-mono font-semibold ${customerDetails && customerDetails.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                                                {customerDetails && new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customerDetails.balance)}
+                                            </p>
+                                         </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )
+                    }) : (
+                        <div className="h-24 text-center flex items-center justify-center">
+                            <p className="text-muted-foreground">Rapor oluşturmak için yeterli veri yok.</p>
+                        </div>
+                    )}
+                 </div>
+
+                {/* Desktop View */}
+                <Table className="hidden sm:table">
                 <TableHeader>
                     <TableRow>
                     <TableHead>Müşteri</TableHead>

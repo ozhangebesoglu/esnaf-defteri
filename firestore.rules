@@ -1,60 +1,73 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
+    
+    // --- Helper Functions ---
+    // Checks if the user is authenticated
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // --- CHAT HISTORY RULES ---
-    // The document ID is the user's UID.
-    match /chatHistories/{userId} {
-      allow read, update, delete: if isSignedIn() && request.auth.uid == userId;
-      allow create: if isSignedIn() && request.auth.uid == userId && request.resource.data.userId == request.auth.uid;
+    // Checks if the user owns the document they are trying to access
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- DATA COLLECTION RULES ---
-    // These rules apply to collections where documents have a 'userId' field for ownership.
-    function isOwnerOfExistingDoc() {
-      return resource.data.userId == request.auth.uid;
+    // --- Default Security ---
+    // By default, deny all reads and writes to all documents.
+    match /{document=**} {
+      allow read, write: if false;
     }
-    
-    function isOwnerOfNewDoc() {
-      return request.resource.data.userId == request.auth.uid;
-    }
-    
+
+    // --- Collection-Specific Rules ---
+
+    // Allow users to create, read, update, and delete documents in these collections
+    // only if the document's 'userId' field matches their own user ID.
     match /customers/{docId} {
-      allow read, update, delete: if isSignedIn() && isOwnerOfExistingDoc();
-      allow create: if isSignedIn() && isOwnerOfNewDoc();
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
+
     match /products/{docId} {
-      allow read, update, delete: if isSignedIn() && isOwnerOfExistingDoc();
-      allow create: if isSignedIn() && isOwnerOfNewDoc();
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
+
     match /orders/{docId} {
-      allow read, update, delete: if isSignedIn() && isOwnerOfExistingDoc();
-      allow create: if isSignedIn() && isOwnerOfNewDoc();
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
+
     match /expenses/{docId} {
-      allow read, update, delete: if isSignedIn() && isOwnerOfExistingDoc();
-      allow create: if isSignedIn() && isOwnerOfNewDoc();
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
+
     match /stockAdjustments/{docId} {
-      allow read, update, delete: if isSignedIn() && isOwnerOfExistingDoc();
-      allow create: if isSignedIn() && isOwnerOfNewDoc();
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
-    match /cashboxHistory/{docId} {
-      allow read, update, delete: if isSignedIn() && isOwnerOfExistingDoc();
-      allow create: if isSignedIn() && isOwnerOfNewDoc();
-    }
+
     match /suppliers/{docId} {
-      allow read, update, delete: if isSignedIn() && isOwnerOfExistingDoc();
-      allow create: if isSignedIn() && isOwnerOfNewDoc();
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
+
     match /staff/{docId} {
-      allow read, update, delete: if isSignedIn() && isOwnerOfExistingDoc();
-      allow create: if isSignedIn() && isOwnerOfNewDoc();
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    match /cashboxHistory/{docId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // Special case for chatHistories where the document's ID is the user's ID.
+    match /chatHistories/{userId} {
+      allow read, write: if isOwner(userId);
     }
   }
 }

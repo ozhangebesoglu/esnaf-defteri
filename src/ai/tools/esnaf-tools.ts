@@ -4,7 +4,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDoc } from "firebase/firestore";
 import type { Customer, Product, Order, Expense, StockAdjustment } from '@/lib/types';
 
 
@@ -239,28 +239,28 @@ export const addStockAdjustmentTool = ai.defineTool(
 export const addCustomerTool = ai.defineTool(
   {
     name: 'addCustomer',
-    description: 'Sisteme yeni bir müşteri kaydeder. Örneğin: "Yeni müşteri ekle: Adı Canan Güneş, telefonu 5551234567, başlangıç borcu 150 lira."',
+    description: 'Sisteme yeni bir müşteri kaydeder. Örneğin: "Yeni müşteri ekle: Adı Canan Güneş, başlangıç borcu 150 lira." Eğer başlangıç borcu belirtilmezse, borç 0 (sıfır) olarak kabul edilir.',
     inputSchema: z.object({
       customerName: z
         .string()
         .describe('Yeni müşterinin tam adı.'),
-      email: z
-        .string()
-        .email()
-        .describe("Yeni müşterinin e-posta adresi. Bu alan zorunlu değildir.")
-        .optional(),
-      initialDebt: z.number().describe("Müşterinin başlangıç borç tutarı. Yoksa belirtme.").optional(),
+      initialDebt: z.number().describe("Müşterinin başlangıç borç tutarı. Belirtilmemişse 0'dır.").optional().default(0),
       userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
-  async ({ customerName, email, initialDebt, userId }) => {
+  async ({ customerName, initialDebt, userId }) => {
+    const existingCustomer = await findResourceByName<Customer>('customers', customerName, userId);
+    if (existingCustomer) {
+      return `"${customerName}" adında bir müşteri zaten mevcut. Farklı bir isimle tekrar deneyin.`;
+    }
+    
     const batch = writeBatch(db);
     const newCustomerRef = doc(collection(db, 'customers'));
     batch.set(newCustomerRef, { 
         userId,
         name: customerName, 
-        email: email || '', 
+        email: '', 
         balance: initialDebt || 0 
     });
 
@@ -280,9 +280,11 @@ export const addCustomerTool = ai.defineTool(
     
     await batch.commit();
     
-    let responseMessage = `${customerName} adlı yeni müşteri başarıyla eklendi.`;
-    if (initialDebt) {
+    let responseMessage = `"${customerName}" adlı yeni müşteri başarıyla eklendi.`;
+    if (initialDebt && initialDebt > 0) {
         responseMessage += ` Başlangıç borcu: ${initialDebt} TL.`;
+    } else {
+        responseMessage += ` Bakiyesi 0 TL olarak ayarlandı.`
     }
     return responseMessage;
   }

@@ -31,7 +31,7 @@ export default function AiChat() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [chatHistory, setChatHistory] = useState<Message[]>([welcomeMessage]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -74,13 +74,8 @@ export default function AiChat() {
   
   // Auto-scroll to the bottom of the chat
   useEffect(() => {
-    if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTo({
-            top: scrollAreaRef.current.scrollHeight,
-            behavior: 'smooth',
-        });
-    }
-  }, [chatHistory]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory, isLoading]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -135,7 +130,7 @@ export default function AiChat() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
-        <ScrollArea className="flex-1 pr-4 -mr-4" ref={scrollAreaRef}>
+        <ScrollArea className="flex-1 pr-4 -mr-4">
             <div className="space-y-6">
                 {isHistoryLoading ? (
                   <div className="flex justify-center items-center h-full">
@@ -168,6 +163,7 @@ export default function AiChat() {
                         </div>
                     </div>
                 )}
+                 <div ref={messagesEndRef} />
             </div>
         </ScrollArea>
         <div className="mt-auto">

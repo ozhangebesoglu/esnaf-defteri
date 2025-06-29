@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { CustomerForm } from "./customer-form"
 import { PaymentForm } from "./payment-form"
 import { SaleForm } from "./sale-form"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Skeleton } from "./ui/skeleton"
 
 export default function CustomerDetail({ customer, orders, onBack, onUpdateCustomer, onAddPayment, onAddSale }: { 
   customer: Customer | undefined, 
@@ -19,11 +21,12 @@ export default function CustomerDetail({ customer, orders, onBack, onUpdateCusto
   onBack: () => void,
   onUpdateCustomer: (data: Customer) => void,
   onAddPayment: (data: { customerId: string, total: number, description?: string }) => void,
-  onAddSale: (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items'>) => void;
+  onAddSale: (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items' | 'userId'>) => void;
 }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
+  const isMobile = useIsMobile();
   const customerOrders = orders.filter(o => o.customerId === customer?.id)
 
   if (!customer) {
@@ -46,6 +49,72 @@ export default function CustomerDetail({ customer, orders, onBack, onUpdateCusto
   const totalSpent = customerOrders
     .filter(o => o.status === 'Tamamlandı' && o.total > 0)
     .reduce((sum, order) => sum + order.total, 0)
+  
+  const renderLoadingSkeleton = () => (
+    <div className="space-y-2">
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+    </div>
+  );
+
+  const renderDesktopHistory = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+            <TableHead className="hidden sm:table-cell">İşlem No</TableHead>
+            <TableHead>Tarih</TableHead>
+            <TableHead>Açıklama</TableHead>
+            <TableHead className="text-center">Durum</TableHead>
+            <TableHead className="text-right">Tutar</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {customerOrders.length > 0 ? customerOrders.map((order) => (
+          <TableRow key={order.id}>
+              <TableCell className="hidden sm:table-cell font-medium">{order.id}</TableCell>
+              <TableCell>{new Date(order.date).toLocaleString('tr-TR')}</TableCell>
+              <TableCell>{order.description}</TableCell>
+              <TableCell className="text-center">
+                  <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
+              </TableCell>
+              <TableCell className={`text-right font-mono ${order.total < 0 ? 'text-green-600' : 'text-destructive'}`}>
+                  {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total)}
+              </TableCell>
+          </TableRow>
+        )) : (
+            <TableRow>
+              <TableCell colSpan={5} className="h-24 text-center">Bu müşteri için işlem bulunamadı.</TableCell>
+            </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  );
+
+  const renderMobileHistory = () => (
+    <div className="space-y-3">
+      {customerOrders.length > 0 ? customerOrders.map((order) => (
+        <Card key={order.id}>
+          <CardContent className="p-4 flex justify-between items-start">
+            <div className="flex-1 space-y-1.5 pr-2">
+              <p className="font-semibold text-sm">{order.description}</p>
+              <div className="flex items-center gap-2">
+                <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
+                <p className="text-xs text-muted-foreground">{new Date(order.date).toLocaleDateString('tr-TR')}</p>
+              </div>
+            </div>
+            <p className={`font-mono font-semibold text-base whitespace-nowrap ${order.total < 0 ? 'text-green-600' : 'text-destructive'}`}>
+              {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total)}
+            </p>
+          </CardContent>
+        </Card>
+      )) : (
+        <div className="h-24 text-center flex items-center justify-center">
+          <p className="text-muted-foreground">İşlem bulunamadı.</p>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="grid gap-6">
@@ -173,36 +242,7 @@ export default function CustomerDetail({ customer, orders, onBack, onUpdateCusto
           <CardDescription>Bu müşteriye ait tüm satış ve ödemeler.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                 <TableHead>İşlem No</TableHead>
-                 <TableHead>Tarih</TableHead>
-                 <TableHead>Açıklama</TableHead>
-                 <TableHead className="text-center">Durum</TableHead>
-                 <TableHead className="text-right">Tutar</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customerOrders.length > 0 ? customerOrders.map((order) => (
-                <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id}</TableCell>
-                    <TableCell>{new Date(order.date).toLocaleString('tr-TR')}</TableCell>
-                    <TableCell>{order.description}</TableCell>
-                    <TableCell className="text-center">
-                        <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
-                    </TableCell>
-                    <TableCell className={`text-right font-mono ${order.total < 0 ? 'text-green-600' : 'text-destructive'}`}>
-                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total < 0 ? order.total : order.total)}
-                    </TableCell>
-                </TableRow>
-              )) : (
-                 <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">Bu müşteri için işlem bulunamadı.</TableCell>
-                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+          {isMobile === undefined ? renderLoadingSkeleton() : (isMobile ? renderMobileHistory() : renderDesktopHistory())}
         </CardContent>
       </Card>
     </div>

@@ -10,7 +10,8 @@ import { ArrowLeft, Pencil } from "lucide-react"
 import { Badge } from "./ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ProductForm } from "./product-form"
-
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Skeleton } from "./ui/skeleton"
 
 const categoryColors: { [key in StockAdjustment['category']]: string } = {
   'Yeni Stok Girişi': "bg-blue-100 text-blue-800",
@@ -30,6 +31,7 @@ export default function ProductDetail({ product, adjustments, onBack, onUpdatePr
   onUpdateProduct: (data: Product) => void,
 }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   if (!product) {
     return (
@@ -45,6 +47,71 @@ export default function ProductDetail({ product, adjustments, onBack, onUpdatePr
   const handleSave = (data: Product) => {
     onUpdateProduct(data);
   }
+
+  const renderLoadingSkeleton = () => (
+    <div className="space-y-2">
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+    </div>
+  );
+
+  const renderDesktopHistory = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Tarih</TableHead>
+          <TableHead>Kategori</TableHead>
+          <TableHead>Açıklama</TableHead>
+          <TableHead className="text-right">Miktar</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {adjustments.length > 0 ? adjustments.map((adj) => (
+          <TableRow key={adj.id}>
+            <TableCell>{new Date(adj.date).toLocaleString('tr-TR')}</TableCell>
+              <TableCell>
+                <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
+              </TableCell>
+            <TableCell>{adj.description}</TableCell>
+            <TableCell className={`text-right font-bold font-mono text-lg ${adj.quantity >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+              {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
+            </TableCell>
+          </TableRow>
+        )) : (
+            <TableRow>
+              <TableCell colSpan={4} className="h-24 text-center">Bu ürün için stok hareketi bulunamadı.</TableCell>
+            </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  );
+
+  const renderMobileHistory = () => (
+    <div className="space-y-3">
+      {adjustments.length > 0 ? adjustments.map((adj) => (
+        <Card key={adj.id}>
+          <CardContent className="p-4 flex justify-between items-start">
+            <div className="flex-1 space-y-1.5 pr-2">
+              <p className="font-semibold text-sm">{adj.description}</p>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
+                <p className="text-xs text-muted-foreground">{new Date(adj.date).toLocaleDateString('tr-TR')}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className={`font-mono font-bold text-xl whitespace-nowrap ${adj.quantity >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )) : (
+        <div className="h-24 text-center flex items-center justify-center">
+          <p className="text-muted-foreground">Stok hareketi bulunamadı.</p>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="grid gap-6">
@@ -123,34 +190,7 @@ export default function ProductDetail({ product, adjustments, onBack, onUpdatePr
           <CardDescription>Bu ürüne ait tüm stok hareketleri.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tarih</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead>Açıklama</TableHead>
-                <TableHead className="text-right">Miktar</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {adjustments.length > 0 ? adjustments.map((adj) => (
-                <TableRow key={adj.id}>
-                  <TableCell>{new Date(adj.date).toLocaleString('tr-TR')}</TableCell>
-                   <TableCell>
-                     <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
-                   </TableCell>
-                  <TableCell>{adj.description}</TableCell>
-                  <TableCell className={`text-right font-bold font-mono text-lg ${adj.quantity >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
-                  </TableCell>
-                </TableRow>
-              )) : (
-                 <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">Bu ürün için stok hareketi bulunamadı.</TableCell>
-                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+           {isMobile === undefined ? renderLoadingSkeleton() : (isMobile ? renderMobileHistory() : renderDesktopHistory())}
         </CardContent>
       </Card>
     </div>

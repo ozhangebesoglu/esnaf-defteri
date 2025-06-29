@@ -198,6 +198,7 @@ export const addStockAdjustmentTool = ai.defineTool(
       description: z.string().describe('Stok hareketinin nedeni.'),
       category: z
         .enum([
+          'Yeni Stok Girişi',
           'Bozulma',
           'Hırsızlık',
           'Veri Giriş Hatası',

@@ -24,7 +24,7 @@ export type StockAdjustment = FirestoreDoc & {
   productName: string;
   quantity: number;
   description: string;
-  category: 'Bozulma' | 'Hırsızlık' | 'Veri Giriş Hatası' | 'Hatalı Ürün Alımı' | 'İndirim' | 'Diğer';
+  category: 'Yeni Stok Girişi' | 'Bozulma' | 'Hırsızlık' | 'Veri Giriş Hatası' | 'Hatalı Ürün Alımı' | 'İndirim' | 'Diğer';
   date: string;
 };
 

@@ -42,7 +42,11 @@ export default function Inventory(props: InventoryProps) {
         <TabsTrigger value="products">Ürünler</TabsTrigger>
       </TabsList>
       <TabsContent value="status">
-        <StockStatus products={props.products} onProductSelect={setSelectedProductId} />
+        <StockStatus 
+            products={props.products} 
+            onProductSelect={setSelectedProductId}
+            onAddStockAdjustment={props.onAddStockAdjustment}
+        />
       </TabsContent>
       <TabsContent value="movements">
         <StockAdjustments 

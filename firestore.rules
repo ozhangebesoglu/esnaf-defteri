@@ -1,11 +1,13 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Test Amaçlı: Kimliği doğrulanmış herhangi bir kullanıcının tüm belgelere
-    // okuma ve yazma erişimine izin ver.
-    // DİKKAT: BU GÜVENLİ DEĞİLDİR VE SADECE TEST İÇİNDİR.
+    // WARNING: These rules are insecure and for testing purposes only.
+    // They allow any client to read and write to your entire database.
+    // You should secure your database before deploying to production.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }

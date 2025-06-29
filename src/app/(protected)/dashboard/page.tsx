@@ -14,6 +14,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { 
   LayoutDashboard, 
@@ -88,6 +89,7 @@ const isToday = (date: string | Date) => {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { setOpenMobile } = useSidebar();
   
   const [activeView, setActiveView] = useState<View>('anasayfa');
   const [loadingData, setLoadingData] = useState(true);
@@ -229,6 +231,11 @@ export default function DashboardPage() {
   }, [products, customers, orders, user]);
   
   // --- Handlers ---
+  const handleViewChange = (view: View) => {
+    setActiveView(view);
+    setOpenMobile(false);
+  };
+
   const getCollectionRef = (collectionName: string) => collection(db, collectionName);
 
   // Customers
@@ -642,7 +649,7 @@ export default function DashboardPage() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('anasayfa')}
+                onClick={() => handleViewChange('anasayfa')}
                 isActive={activeView === 'anasayfa'}
                 tooltip="Anasayfa"
               >
@@ -652,7 +659,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('satis-islemleri')}
+                onClick={() => handleViewChange('satis-islemleri')}
                 isActive={activeView === 'satis-islemleri'}
                 tooltip="Satış İşlemleri"
               >
@@ -662,7 +669,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('urun-yonetimi')}
+                onClick={() => handleViewChange('urun-yonetimi')}
                 isActive={activeView === 'urun-yonetimi'}
                 tooltip="Ürün Yönetimi"
               >
@@ -672,7 +679,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('musteri-yonetimi')}
+                onClick={() => handleViewChange('musteri-yonetimi')}
                 isActive={activeView === 'musteri-yonetimi'}
                 tooltip="Müşteri Yönetimi"
               >
@@ -682,7 +689,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('mali-isler')}
+                onClick={() => handleViewChange('mali-isler')}
                 isActive={activeView === 'mali-isler'}
                 tooltip="Mali İşler (Giderler)"
               >
@@ -692,7 +699,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('kasa')}
+                onClick={() => handleViewChange('kasa')}
                 isActive={activeView === 'kasa'}
                 tooltip="Kasa"
               >
@@ -702,7 +709,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('tedarikciler')}
+                onClick={() => handleViewChange('tedarikciler')}
                 isActive={activeView === 'tedarikciler'}
                 tooltip="Tedarikçiler"
               >
@@ -712,7 +719,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('personel')}
+                onClick={() => handleViewChange('personel')}
                 isActive={activeView === 'personel'}
                 tooltip="Personel"
               >
@@ -722,7 +729,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('kampanyalar')}
+                onClick={() => handleViewChange('kampanyalar')}
                 isActive={activeView === 'kampanyalar'}
                 tooltip="Kampanyalar"
               >
@@ -732,7 +739,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('raporlar')}
+                onClick={() => handleViewChange('raporlar')}
                 isActive={activeView === 'raporlar'}
                 tooltip="Raporlar"
               >
@@ -742,7 +749,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('uyarilar')}
+                onClick={() => handleViewChange('uyarilar')}
                 isActive={activeView === 'uyarilar'}
                 tooltip="Uyarılar"
               >
@@ -752,7 +759,7 @@ export default function DashboardPage() {
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveView('yapay-zeka')}
+                onClick={() => handleViewChange('yapay-zeka')}
                 isActive={activeView === 'yapay-zeka'}
                 tooltip="Yapay Zeka"
               >

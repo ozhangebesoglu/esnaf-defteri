@@ -142,7 +142,7 @@ export async function chatWithAssistant(
       if (tool) {
         const toolInputWithUser = { ...(toolRequest.input as object), userId };
         const output = await tool.fn(toolInputWithUser);
-        toolResponses.push({ toolCallId: toolRequest.toolCallId, output, name: toolRequest.name });
+        toolResponses.push({ toolCallId: toolRequest.toolCallId, output, name: tool.name });
       } else {
          console.error(`Tool not found: ${toolRequest.name}`);
          toolResponses.push({ toolCallId: toolRequest.toolCallId, output: `Error: Tool '${toolRequest.name}' not found.`, name: toolRequest.name });

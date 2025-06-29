@@ -775,7 +775,7 @@ export default function DashboardPage() {
           <SidebarTrigger className="md:hidden" />
           <h1 className="text-xl font-headline font-semibold capitalize">{viewTitles[activeView]}</h1>
         </header>
-        <main className="flex-1">{renderView()}</main>
+        <main className="flex-1 p-4 md:p-6">{renderView()}</main>
       </SidebarInset>
     </>
   );

@@ -103,7 +103,7 @@ const toGenkitMessages = (history: Message[]): MessageData[] => {
         messages.push({ role: 'model', content: [{ text: m.content as string }] });
       }
     } else if (m.role === 'tool') {
-      const toolContent = m.content as Array<{ toolCallId: string; output: any }>;
+      const toolContent = m.content as Array<{ toolCallId: string; output: any; name: string }>;
       const parts: ToolResponsePart[] = toolContent.map(tc => ({ toolResponse: tc }));
       messages.push({ role: 'tool', content: parts });
     }
@@ -145,7 +145,7 @@ export async function chatWithAssistant(
           if (tool) {
             const toolInputWithUser = { ...call.input, userId };
             const output = await tool.fn(toolInputWithUser);
-            toolResponses.push({ toolCallId: call.toolCallId, output });
+            toolResponses.push({ toolCallId: call.toolCallId, output, name: call.name });
           }
         }
     }

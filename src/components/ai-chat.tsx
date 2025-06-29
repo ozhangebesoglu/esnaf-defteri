@@ -5,10 +5,9 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Bot, Loader2, Send, User } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
 
 import { useAuth } from '@/contexts/auth-context';
-import { chatWithAssistant } from '@/ai/flows/assistant-flow';
+import { chatWithAssistant, getChatHistory } from '@/ai/flows/assistant-flow';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -17,25 +16,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/types';
-import { db } from '@/lib/firebase';
 
 
 const formSchema = z.object({
   message: z.string().min(1, 'Mesaj boş olamaz.'),
 });
 
-const defaultWelcomeMessage: Message = {
-    role: 'model',
-    content: 'Merhaba! Ben Esnaf Defteri asistanınızım. "Ahmet Yılmaz\'a 250 liralık satış ekle" gibi komutlar verebilir veya "Yeni müşteri ekle: Adı Canan Güneş" gibi işlemler yapabilirsiniz.',
-};
-
-
 export default function AiChat() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [chatHistory, setChatHistory] = useState<Message[]>([defaultWelcomeMessage]);
+  const [chatHistory, setChatHistory] = useState<Message[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -44,20 +36,30 @@ export default function AiChat() {
     },
   });
 
-  // Load chat history from Firestore on component mount
+  // Load chat history using the server action on component mount
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+        setIsHistoryLoading(false);
+        return;
+    };
+    
     const loadHistory = async () => {
       setIsHistoryLoading(true);
-      const historyRef = doc(db, 'chatHistories', user.uid);
-      const historySnap = await getDoc(historyRef);
-      if (historySnap.exists()) {
-        setChatHistory(historySnap.data().messages);
-      } else {
-        setChatHistory([defaultWelcomeMessage]);
+      try {
+        const history = await getChatHistory(user.uid);
+        setChatHistory(history);
+      } catch (error) {
+        console.error("Failed to load chat history:", error);
+        const errorMessage: Message = {
+            role: 'model',
+            content: 'Sohbet geçmişi yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.',
+        };
+        setChatHistory([errorMessage]);
+      } finally {
+        setIsHistoryLoading(false);
       }
-      setIsHistoryLoading(false);
     };
+
     loadHistory();
   }, [user]);
   

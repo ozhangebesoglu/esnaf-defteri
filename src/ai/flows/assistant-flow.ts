@@ -90,25 +90,25 @@ export async function getChatHistory(userId: string): Promise<Message[]> {
 }
 
 const toGenkitMessages = (history: Message[]): MessageData[] => {
-  return history.map(m => {
+  const messages: MessageData[] = [];
+  for (const m of history) {
     if (m.role === 'user') {
-      return { role: 'user', content: [{ text: m.content as string }] };
-    }
-    if (m.role === 'model') {
+      messages.push({ role: 'user', content: [{ text: m.content as string }] });
+    } else if (m.role === 'model') {
       const modelContent = m.content as any;
       if (modelContent?.toolRequests) {
         const parts: ToolRequestPart[] = modelContent.toolRequests.map((req: any) => ({ toolRequest: req }));
-        return { role: 'model', content: parts };
+        messages.push({ role: 'model', content: parts });
+      } else {
+        messages.push({ role: 'model', content: [{ text: m.content as string }] });
       }
-      return { role: 'model', content: [{ text: m.content as string }] };
-    }
-    if (m.role === 'tool') {
+    } else if (m.role === 'tool') {
       const toolContent = m.content as Array<{ toolCallId: string; output: any }>;
       const parts: ToolResponsePart[] = toolContent.map(tc => ({ toolResponse: tc }));
-      return { role: 'tool', content: parts };
+      messages.push({ role: 'tool', content: parts });
     }
-    return null;
-  }).filter((m): m is MessageData => m !== null);
+  }
+  return messages;
 };
 
 

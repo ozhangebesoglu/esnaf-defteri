@@ -84,7 +84,7 @@ export default function Customers({ customers, orders, onAddCustomer, onUpdateCu
   }
 
   const renderLoadingSkeleton = () => (
-    <div className="space-y-2">
+    <div className="space-y-3">
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-16 w-full" />

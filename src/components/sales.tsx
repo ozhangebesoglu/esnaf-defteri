@@ -28,7 +28,7 @@ import { Skeleton } from "./ui/skeleton"
 interface SalesProps {
     orders: Order[];
     customers: Customer[];
-    onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'>) => void;
+    onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'|'userId'>) => void;
     onUpdateSale: (data: Order) => void;
     onDeleteSale: (id: string) => void;
 }

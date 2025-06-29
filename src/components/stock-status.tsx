@@ -33,7 +33,7 @@ function StockEntryForm({ product, setOpen, onSave }: {
   const form = useForm<z.infer<typeof stockEntrySchema>>({
     resolver: zodResolver(stockEntrySchema),
     defaultValues: {
-      quantity: undefined,
+      quantity: '' as any,
       description: "Tedarikçiden mal alımı",
     },
   })

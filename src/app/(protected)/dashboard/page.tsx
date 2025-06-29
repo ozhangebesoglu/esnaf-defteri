@@ -341,7 +341,7 @@ export default function DashboardPage() {
     toast({ title: "Satış Eklendi", description: "Yeni satış kaydı oluşturuldu." });
   };
 
-   const handleAddPayment = async (data: { customerId: string, total: number, description: string }) => {
+   const handleAddPayment = async (data: { customerId: string, total: number, description?: string }) => {
     if(!user) return;
     const customer = customers.find(c => c.id === data.customerId);
     if (!customer) return;

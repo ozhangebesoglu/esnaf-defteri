@@ -18,7 +18,7 @@ export default function CustomerDetail({ customer, orders, onBack, onUpdateCusto
   orders: Order[],
   onBack: () => void,
   onUpdateCustomer: (data: Customer) => void,
-  onAddPayment: (data: { customerId: string, total: number, description: string }) => void,
+  onAddPayment: (data: { customerId: string, total: number, description?: string }) => void,
   onAddSale: (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items'>) => void;
 }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);

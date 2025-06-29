@@ -63,14 +63,9 @@ Kullanıcı senden bilgi istiyorsa (örneğin, "Ahmet'in ne kadar borcu var?"), 
 Bir aracı çalıştırdıktan sonra, aracın döndürdüğü sonucu temel alarak kullanıcıyı mutlaka doğal bir dilde bilgilendir. Örneğin, "Elbette, Ahmet Yılmaz için 250 TL'lik satış başarıyla eklendi." gibi.
 Unutma, her araç 'userId' parametresine ihtiyaç duyar, bu bilgiyi her zaman sağla.`;
 
-const welcomeMessage: Message = {
-    role: 'model',
-    content: 'Merhaba! Ben Esnaf Defteri asistanınızım. "Ahmet Yılmaz\'a 250 liralık satış ekle" gibi komutlar verebilir veya "Yeni müşteri ekle: Adı Canan Güneş" gibi işlemler yapabilirsiniz.',
-};
-
 export async function getChatHistory(userId: string): Promise<Message[]> {
   if (!userId) {
-    return [welcomeMessage];
+    return [];
   }
   const historyRef = doc(db, 'chatHistories', userId);
   const historySnap = await getDoc(historyRef);
@@ -79,9 +74,7 @@ export async function getChatHistory(userId: string): Promise<Message[]> {
     return (historySnap.data() as ChatHistory).messages;
   }
   
-  // If no history, create one with the welcome message.
-  await setDoc(historyRef, { userId, messages: [welcomeMessage] });
-  return [welcomeMessage];
+  return [];
 }
 
 
@@ -95,7 +88,7 @@ export async function chatWithAssistant(
   const historySnap = await getDoc(historyRef);
   let chatHistory: Message[] = historySnap.exists()
     ? (historySnap.data() as ChatHistory).messages
-    : [welcomeMessage];
+    : [];
 
   // 2. Append new user message
   chatHistory.push({ role: 'user', content: newMessage });

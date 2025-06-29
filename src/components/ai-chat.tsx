@@ -22,12 +22,17 @@ const formSchema = z.object({
   message: z.string().min(1, 'Mesaj boş olamaz.'),
 });
 
+const welcomeMessage: Message = {
+    role: 'model',
+    content: 'Merhaba! Ben Esnaf Defteri asistanınızım. "Ahmet Yılmaz\'a 250 liralık satış ekle" gibi komutlar verebilir veya "Yeni müşteri ekle: Adı Canan Güneş" gibi işlemler yapabilirsiniz.',
+};
+
 export default function AiChat() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [chatHistory, setChatHistory] = useState<Message[]>([]);
+  const [chatHistory, setChatHistory] = useState<Message[]>([welcomeMessage]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -47,7 +52,11 @@ export default function AiChat() {
       setIsHistoryLoading(true);
       try {
         const history = await getChatHistory(user.uid);
-        setChatHistory(history);
+        if (history.length > 0) {
+            setChatHistory(history);
+        } else {
+            setChatHistory([welcomeMessage]);
+        }
       } catch (error) {
         console.error("Failed to load chat history:", error);
         const errorMessage: Message = {
@@ -81,7 +90,14 @@ export default function AiChat() {
     }
 
     const userMessage: Message = { role: 'user', content: values.message };
-    setChatHistory(current => [...current, userMessage]);
+
+    const isFirstMessage = chatHistory.length === 1 && chatHistory[0].content === welcomeMessage.content;
+    
+    if (isFirstMessage) {
+        setChatHistory([userMessage]);
+    } else {
+        setChatHistory(current => [...current, userMessage]);
+    }
     
     setIsLoading(true);
     form.reset();

@@ -39,7 +39,7 @@ function CashSaleForm({ setOpen, onSave }: { setOpen: (open: boolean) => void, o
     resolver: zodResolver(cashSaleSchema),
     defaultValues: {
       description: "",
-      total: undefined,
+      total: '' as any,
     },
   });
 

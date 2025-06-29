@@ -27,7 +27,7 @@ interface StaffFormProps {
 export function StaffForm({ staff, setOpen, onSave }: StaffFormProps) {
   const form = useForm<z.infer<typeof staffSchema>>({
     resolver: zodResolver(staffSchema),
-    defaultValues: staff || { name: "", position: "", salary: undefined, phone: "" },
+    defaultValues: staff || { name: "", position: "", salary: '' as any, phone: "" },
   })
 
   function onSubmit(values: z.infer<typeof staffSchema>) {

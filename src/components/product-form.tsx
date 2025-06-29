@@ -32,7 +32,7 @@ interface ProductFormProps {
 export function ProductForm({ product, setOpen, onSave }: ProductFormProps) {
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
-    defaultValues: product || { name: "", type: "beef", cost: 0, price: 0, lowStockThreshold: 10 },
+    defaultValues: product || { name: "", type: "beef", cost: '' as any, price: '' as any, lowStockThreshold: 10 },
   })
 
   function onSubmit(values: z.infer<typeof productSchema>) {

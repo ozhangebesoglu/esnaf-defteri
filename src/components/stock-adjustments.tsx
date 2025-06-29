@@ -55,7 +55,7 @@ function AdjustmentForm({ adjustment, setOpen, onSave, products }: {
   const form = useForm<z.infer<typeof adjustmentSchema>>({
     resolver: zodResolver(adjustmentSchema),
     defaultValues: adjustment || {
-      quantity: undefined,
+      quantity: '' as any,
       description: "",
       category: undefined,
       productId: undefined,
@@ -177,7 +177,7 @@ function AdjustmentForm({ adjustment, setOpen, onSave, products }: {
 interface StockAdjustmentsProps {
     stockAdjustments: StockAdjustment[];
     products: Product[];
-    onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void;
+    onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date' | 'userId'>) => void;
     onUpdateStockAdjustment: (data: StockAdjustment) => void;
     onDeleteStockAdjustment: (id: string) => void;
 }

@@ -29,7 +29,7 @@ export function PaymentForm({ customer, setOpen, onSave }: PaymentFormProps) {
     defaultValues: {
         customerId: customer.id,
         description: "Nakit Ödeme",
-        total: customer.balance > 0 ? customer.balance : undefined,
+        total: customer.balance > 0 ? customer.balance : ('' as any),
     },
   })
 

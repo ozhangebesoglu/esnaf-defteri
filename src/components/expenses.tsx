@@ -45,6 +45,7 @@ function ExpenseForm({ expense, setOpen, onSave }: { expense?: Expense, setOpen:
     resolver: zodResolver(expenseSchema),
     defaultValues: expense || {
       description: "",
+      amount: '' as any,
       category: undefined,
     },
   });

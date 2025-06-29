@@ -33,7 +33,7 @@ interface SaleFormProps {
 export function SaleForm({ sale, setOpen, onSave, customers }: SaleFormProps) {
   const form = useForm<z.infer<typeof saleSchema>>({
     resolver: zodResolver(saleSchema),
-    defaultValues: sale || { description: "", total: undefined, customerId: undefined },
+    defaultValues: sale || { description: "", total: '' as any, customerId: undefined },
   })
 
   function onSubmit(values: z.infer<typeof saleSchema>) {

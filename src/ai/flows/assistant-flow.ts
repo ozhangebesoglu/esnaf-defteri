@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -71,13 +70,14 @@ export async function getChatHistory(userId: string): Promise<Message[]> {
   const historySnap = await getDoc(historyRef);
 
   if (historySnap.exists()) {
-    const messages = (historySnap.data() as ChatHistory).messages;
-    if (messages.length > 0 && messages[0].role !== 'user' && messages[0].role !== 'model') {
-      console.warn(`Corrupt chat history for user ${userId}, starting fresh.`);
-      await setDoc(historyRef, { userId, messages: [] });
-      return [];
+    const data = historySnap.data() as ChatHistory;
+    // Basic validation to prevent crashes from corrupt data
+    if (data && Array.isArray(data.messages)) {
+        return data.messages;
     }
-    return messages;
+     console.warn(`Corrupt chat history for user ${userId}, starting fresh.`);
+     await setDoc(historyRef, { userId, messages: [] });
+     return [];
   }
 
   return [];
@@ -92,12 +92,15 @@ const toGenkitMessages = (history: Message[]): MessageData[] => {
     } else if (m.role === 'model') {
       const modelContent = m.content as any;
       if (modelContent?.toolRequests) {
+        // This is a ToolRequest from the model
         const parts: ToolRequestPart[] = modelContent.toolRequests;
         messages.push({ role: 'model', content: parts });
       } else {
+        // This is a standard text response from the model
         messages.push({ role: 'model', content: [{ text: m.content as string }] });
       }
     } else if (m.role === 'tool') {
+      // This is the response from a tool we executed
       const toolContent = m.content as Array<{ toolCallId: string; output: any; name: string }>;
       const parts: ToolResponsePart[] = toolContent.map(tc => ({
         toolResponse: {
@@ -117,9 +120,11 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
   const { newMessage, userId } = input;
   const historyRef = doc(db, 'chatHistories', userId);
 
+  // 1. Load existing history and add the new user message
   let chatHistory = await getChatHistory(userId);
   chatHistory.push({ role: 'user', content: newMessage });
 
+  // 2. Call the AI with the conversation history
   const llmResponse = await ai.generate({
     messages: toGenkitMessages(chatHistory),
     system: systemPrompt,
@@ -128,20 +133,29 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
 
   const toolRequests = llmResponse.toolRequests;
 
+  // 3. Check if the AI wants to use a tool
   if (toolRequests && toolRequests.length > 0) {
+    // 3a. Save the AI's request to use a tool into our history
     chatHistory.push({ role: 'model', content: { toolRequests } });
 
     const toolResponses = [];
-
+    
+    // 3b. Execute each tool the AI requested
     for (const toolRequest of toolRequests) {
       const tool = allTools.find(t => t.name === toolRequest.toolRequest.name);
       if (tool) {
+        // Add the userId to the tool's input arguments
         const toolInputWithUser = { ...(toolRequest.toolRequest.input as object), userId };
-        const output = await tool(toolInputWithUser); // Hata buradaydı, fn yok
+        
+        // Call the tool. We use 'as any' because TypeScript cannot statically know
+        // the shape of the dynamic data coming from the LLM, but we know it's correct.
+        const output = await tool(toolInputWithUser as any);
+        
+        // Prepare the response to send back to the LLM
         toolResponses.push({
           toolCallId: toolRequest.toolRequest.toolCallId,
           output,
-          name: toolRequest.toolRequest.name,
+          name: tool.name, // Include the tool name in the response
         });
       } else {
         const errorMsg = `Error: Tool '${toolRequest.toolRequest.name}' not found.`;
@@ -154,8 +168,10 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
       }
     }
 
+    // 3c. Save the results of the tool execution to our history
     chatHistory.push({ role: 'tool', content: toolResponses });
 
+    // 3d. Call the AI *again* with the tool results to get a final, natural language response
     const finalLlmResponse = await ai.generate({
       messages: toGenkitMessages(chatHistory),
       system: systemPrompt,
@@ -167,6 +183,7 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
     await setDoc(historyRef, { userId, messages: chatHistory });
     return { textResponse: finalResponseText };
   } else {
+    // 4. If no tool was used, just return the AI's direct response
     const finalResponseText = llmResponse.text;
     chatHistory.push({ role: 'model', content: finalResponseText });
     await setDoc(historyRef, { userId, messages: chatHistory });

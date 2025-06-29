@@ -61,7 +61,7 @@ Eğer bir müşteri veya ürün adı belirsizse ya da bulunamazsa, kibarca kulla
 "addSale" aracını sadece veresiye (borç) satışlar için kullanmalısın. Peşin satışlar için "addCashSale" aracını kullan.
 Kullanıcı senden bilgi istiyorsa (örneğin, "Ahmet'in ne kadar borcu var?"), şu an için bu bilgiye erişimin olmadığını, ancak gelecekte bu özelliğin ekleneceğini belirt.
 Bir aracı çalıştırdıktan sonra, aracın döndürdüğü sonucu temel alarak kullanıcıyı mutlaka doğal bir dilde bilgilendir. Örneğin, "Elbette, Ahmet Yılmaz için 250 TL'lik satış başarıyla eklendi." gibi.
-Unutma, her araç 'userId' parametresine ihtiyaç duyar, bu bilgiyi her zaman sağla.`;
+Araçları kullanmak için gerekli olan kullanıcı kimliği ('userId') sistem tarafından otomatik olarak sağlanacaktır; bunu ASLA kullanıcıdan isteme.`;
 
 export async function getChatHistory(userId: string): Promise<Message[]> {
   if (!userId) {

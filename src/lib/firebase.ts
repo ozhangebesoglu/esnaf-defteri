@@ -3,12 +3,12 @@ import { getAuth } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBMDoglKQ_qbCO1s0DeUm_J2jTFOQ5DeFA",
-  authDomain: "merhabaapp-14bd8.firebaseapp.com",
-  projectId: "merhabaapp-14bd8",
-  storageBucket: "merhabaapp-14bd8.appspot.com",
-  messagingSenderId: "432273595838",
-  appId: "1:432273595838:web:8e530c3808142ba533edef"
+  apiKey: "AIzaSyBkBX6UqgQuGYzHpkjUjT9UwuEdAGKZ7QU",
+  authDomain: "butchertrack-mobile.firebaseapp.com",
+  projectId: "butchertrack-mobile",
+  storageBucket: "butchertrack-mobile.appspot.com",
+  messagingSenderId: "877997229124",
+  appId: "1:877997229124:web:2f74cea527e247591ba811"
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

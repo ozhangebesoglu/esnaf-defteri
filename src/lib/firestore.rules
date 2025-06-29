@@ -1,0 +1,38 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is authenticated and is the owner of a document.
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Helper function to check ownership when creating a new document.
+    // It ensures the 'userId' field in the new document matches the creator's UID.
+    function isOwnerOnCreate() {
+      return isOwner(request.resource.data.userId);
+    }
+    
+    // Helper function to check ownership for existing documents.
+    // It ensures the 'userId' field in the existing document matches the user's UID.
+    function isOwnerOnAccess() {
+      return isOwner(resource.data.userId);
+    }
+
+    // Rule for the chatHistories collection, where the document ID is the user's UID.
+    match /chatHistories/{userId} {
+      allow read, update, delete: if isOwner(userId);
+      // On create, the doc ID and the `userId` field in the data must both match the user's UID.
+      allow create: if isOwner(userId) && isOwnerOnCreate();
+    }
+    
+    // Generic rules for all other collections that use a `userId` field for ownership.
+    // This applies to: customers, products, orders, expenses, stockAdjustments, etc.
+    match /{collection}/{docId} {
+      allow create: if isOwnerOnCreate();
+      allow read, update, delete: if isOwnerOnAccess();
+    }
+  }
+}

@@ -84,32 +84,46 @@ export async function chatWithAssistant(
   chatHistory.push({ role: 'user', content: newMessage });
   
   // 3. Start conversation loop
-  const initialMessages = chatHistory.map(m => ({
-    role: m.role,
-    content: [{ text: m.content as string }],
-  })).filter(m => m.role !== 'tool');
+  const initialMessages = chatHistory.map(m => {
+    if (m.role === 'user') return { role: 'user', content: [{ text: m.content as string }] };
+    if (m.role === 'model') {
+        const modelContent = m.content as any;
+        if (typeof modelContent === 'object' && modelContent.toolRequests) {
+            const parts = modelContent.toolRequests.map((req: any) => ({ toolRequest: req }));
+            return { role: 'model', content: parts };
+        }
+        return { role: 'model', content: [{ text: m.content as string }] };
+    }
+    if (m.role === 'tool') {
+        const toolContent = m.content as Array<{ toolCallId: string; output: any }>;
+        return { role: 'tool', content: toolContent.map(tc => ({ toolResponse: tc })) };
+    }
+    return m;
+  }).filter(m => m && m.role !== 'tool');
 
   const llmResponse = await ai.generate({
-    messages: initialMessages,
+    messages: initialMessages as any,
     system: systemPrompt,
     tools: allTools,
   });
 
   let finalResponse = '';
 
-  const toolRequest = llmResponse.toolRequest;
-  if (toolRequest) {
+  const toolRequests = llmResponse.toolRequests;
+  if (toolRequests && toolRequests.length > 0) {
     // A tool has been requested
-    chatHistory.push({ role: 'model', content: llmResponse.content as any });
+    chatHistory.push({ role: 'model', content: { toolRequests } });
 
     const toolResponses = [];
-    for (const call of toolRequest.calls) {
-      const tool = allTools.find(t => t.name === call.name);
-      if (tool) {
-        const toolInputWithUser = { ...call.input, userId };
-        const output = await tool.fn(toolInputWithUser);
-        toolResponses.push({ toolCallId: call.toolCallId, output });
-      }
+    for (const toolRequest of toolRequests) {
+        for (const call of toolRequest.calls) {
+          const tool = allTools.find(t => t.name === call.name);
+          if (tool) {
+            const toolInputWithUser = { ...call.input, userId };
+            const output = await tool.fn(toolInputWithUser);
+            toolResponses.push({ toolCallId: call.toolCallId, output });
+          }
+        }
     }
 
     chatHistory.push({ role: 'tool', content: toolResponses });
@@ -119,8 +133,9 @@ export async function chatWithAssistant(
         if (m.role === 'user') return { role: 'user', content: [{ text: m.content as string }] };
         if (m.role === 'model') {
             const modelContent = m.content as any;
-            if (modelContent.toolRequest) {
-                return { role: 'model', content: [modelContent] };
+            if (typeof modelContent === 'object' && modelContent.toolRequests) {
+                const parts = modelContent.toolRequests.map((req: any) => ({ toolRequest: req }));
+                return { role: 'model', content: parts };
             }
             return { role: 'model', content: [{ text: m.content as string }] };
         }

@@ -78,7 +78,7 @@ export async function getChatHistory(userId: string): Promise<Message[]> {
 
   if (historySnap.exists()) {
     const messages = (historySnap.data() as ChatHistory).messages;
-    if (messages.length > 0 && messages[0].role !== 'user') {
+    if (messages.length > 0 && messages[0].role !== 'user' && messages[0].role !== 'model') {
       console.warn(`Corrupt chat history for user ${userId}, starting fresh.`);
       await setDoc(historyRef, { userId, messages: [] }); // Clear corrupt history
       return [];
@@ -151,7 +151,7 @@ export async function chatWithAssistant(
       if (tool) {
         // Add the userId to the tool's input arguments
         const toolInputWithUser = { ...(toolRequest.toolRequest.input as object), userId };
-        const output = await tool.fn(toolInputWithUser);
+        const output = await tool(toolInputWithUser);
         // Prepare the response to send back to the LLM
         toolResponses.push({ toolCallId: toolRequest.toolRequest.toolCallId, output, name: tool.name });
       } else {

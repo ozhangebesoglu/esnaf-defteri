@@ -25,10 +25,10 @@ const stockEntrySchema = z.object({
   description: z.string().optional(),
 })
 
-function StockEntryForm({ product, setOpen, onSave }: { 
-  product: Product, 
-  setOpen: (open: boolean) => void, 
-  onSave: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date' | 'userId'>) => void 
+function StockEntryForm({ product, setOpen, onSave }: {
+  product: Product,
+  setOpen: (open: boolean) => void,
+  onSave: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date' | 'userId'>) => void
 }) {
   const form = useForm<z.infer<typeof stockEntrySchema>>({
     resolver: zodResolver(stockEntrySchema),
@@ -162,7 +162,7 @@ export default function StockStatus({ products, onProductSelect, onAddStockAdjus
                             <ProductIcon type={product.type} />
                             <div className="space-y-1">
                                 <p className="font-semibold">{product.name}</p>
-                                <p className="text-sm">
+                                <div className="text-sm">
                                     {product.stock <= 0 ? (
                                        <Badge variant="destructive">Stokta Yok</Badge>
                                     ) : product.stock <= product.lowStockThreshold ? (
@@ -170,7 +170,7 @@ export default function StockStatus({ products, onProductSelect, onAddStockAdjus
                                     ) : (
                                       <Badge variant="secondary">Yeterli</Badge>
                                     )}
-                                </p>
+                                </div>
                             </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
@@ -201,10 +201,10 @@ export default function StockStatus({ products, onProductSelect, onAddStockAdjus
             </DialogDescription>
           </DialogHeader>
           {selectedProductForEntry && (
-            <StockEntryForm 
-              product={selectedProductForEntry} 
-              setOpen={setIsEntryDialogOpen} 
-              onSave={onAddStockAdjustment} 
+            <StockEntryForm
+              product={selectedProductForEntry}
+              setOpen={setIsEntryDialogOpen}
+              onSave={onAddStockAdjustment}
             />
           )}
         </DialogContent>

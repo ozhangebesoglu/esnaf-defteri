@@ -77,10 +77,9 @@ export async function getChatHistory(userId: string): Promise<Message[]> {
 
   if (historySnap.exists()) {
     const messages = (historySnap.data() as ChatHistory).messages;
-    // Defensive check: If history is not empty and doesn't start with a user message,
-    // it's corrupt. Return an empty array to start fresh.
     if (messages.length > 0 && messages[0].role !== 'user') {
       console.warn(`Corrupt chat history for user ${userId}, starting fresh.`);
+      await setDoc(historyRef, { userId, messages: [] }); // Clear corrupt history
       return [];
     }
     return messages;
@@ -103,14 +102,19 @@ const toGenkitMessages = (history: Message[]): MessageData[] => {
         messages.push({ role: 'model', content: [{ text: m.content as string }] });
       }
     } else if (m.role === 'tool') {
-      const toolContent = m.content as Array<{ toolCallId: string; output: any; name: string }>;
-      const parts: ToolResponsePart[] = toolContent.map(tc => ({ toolResponse: tc }));
+      const toolContent = m.content as Array<{ toolCallId: string; output: any; name: string; }>;
+      const parts: ToolResponsePart[] = toolContent.map(tc => ({ 
+          toolResponse: {
+              name: tc.name,
+              toolCallId: tc.toolCallId,
+              output: tc.output,
+          }
+      }));
       messages.push({ role: 'tool', content: parts });
     }
   }
   return messages;
 };
-
 
 export async function chatWithAssistant(
   input: ChatWithAssistantInput
@@ -118,24 +122,18 @@ export async function chatWithAssistant(
   const { newMessage, userId } = input;
   const historyRef = doc(db, 'chatHistories', userId);
 
-  // 1. Load history using the new defensive function.
   let chatHistory = await getChatHistory(userId);
-
-  // 2. Append new user message. Now we are certain history either is empty or starts with 'user'.
   chatHistory.push({ role: 'user', content: newMessage });
   
-  // 3. Generate response from the model
   const llmResponse = await ai.generate({
     messages: toGenkitMessages(chatHistory),
     system: systemPrompt,
     tools: allTools,
   });
 
-  let finalResponseText = llmResponse.text;
   const toolRequests = llmResponse.toolRequests;
 
   if (toolRequests && toolRequests.length > 0) {
-    // A tool has been requested
     chatHistory.push({ role: 'model', content: { toolRequests } });
 
     const toolResponses = [];
@@ -146,30 +144,30 @@ export async function chatWithAssistant(
             const toolInputWithUser = { ...call.input, userId };
             const output = await tool.fn(toolInputWithUser);
             toolResponses.push({ toolCallId: call.toolCallId, output, name: call.name });
+          } else {
+             console.error(`Tool not found: ${call.name}`);
+             toolResponses.push({ toolCallId: call.toolCallId, output: `Error: Tool '${call.name}' not found.`, name: call.name });
           }
         }
     }
 
     chatHistory.push({ role: 'tool', content: toolResponses });
 
-    // Call the model again with the tool responses
     const finalLlmResponse = await ai.generate({
         messages: toGenkitMessages(chatHistory),
         system: systemPrompt,
         tools: allTools,
     });
     
-    finalResponseText = finalLlmResponse.text;
+    const finalResponseText = finalLlmResponse.text;
     chatHistory.push({ role: 'model', content: finalResponseText });
+    await setDoc(historyRef, { userId, messages: chatHistory });
+    return { textResponse: finalResponseText };
+
   } else {
-    // No tool call, just a text response
-    finalResponseText = llmResponse.text;
+    const finalResponseText = llmResponse.text;
     chatHistory.push({ role: 'model', content: finalResponseText });
+    await setDoc(historyRef, { userId, messages: chatHistory });
+    return { textResponse: finalResponseText };
   }
-
-  // 4. Save updated history
-  await setDoc(historyRef, { userId, messages: chatHistory });
-
-  // 5. Return final response
-  return { textResponse: finalResponseText };
 }

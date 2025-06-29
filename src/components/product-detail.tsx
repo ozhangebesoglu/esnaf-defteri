@@ -13,9 +13,10 @@ import { ProductForm } from "./product-form"
 
 
 const categoryColors: { [key in StockAdjustment['category']]: string } = {
+  'Yeni Stok Girişi': "bg-blue-100 text-blue-800",
   'Bozulma': "bg-yellow-100 text-yellow-800",
   'Hırsızlık': "bg-red-100 text-red-800",
-  "Veri Giriş Hatası": "bg-blue-100 text-blue-800",
+  "Veri Giriş Hatası": "bg-cyan-100 text-cyan-800",
   "Hatalı Ürün Alımı": "bg-purple-100 text-purple-800",
   'İndirim': "bg-green-100 text-green-800",
   'Diğer': "bg-gray-100 text-gray-800",

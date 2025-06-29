@@ -24,7 +24,7 @@ import {
 import type { Message, ChatHistory } from '@/lib/types';
 import type { MessageData, ToolRequestPart, ToolResponsePart } from 'genkit';
 
-// All tools
+// Tüm tool fonksiyonlarını listele
 const allTools = [
   addSaleTool,
   addPaymentTool,
@@ -39,7 +39,7 @@ const allTools = [
   deleteStockAdjustmentTool,
 ];
 
-// Input and Output type definitions
+// Input ve Output tip tanımları
 const ChatWithAssistantInputSchema = z.object({
   newMessage: z.string().describe('The latest message from the user.'),
   userId: z.string().describe("The user's Firebase UID."),
@@ -51,7 +51,7 @@ const ChatWithAssistantOutputSchema = z.object({
 });
 export type ChatWithAssistantOutput = z.infer<typeof ChatWithAssistantOutputSchema>;
 
-// System prompt for the AI
+// AI'ye verilecek sistem prompt'u
 const systemPrompt = `Sen, bir kasap dükkanı için geliştirilmiş "Esnaf Defteri" uygulamasının zeki ve yardımsever yapay zeka asistanısın. Esas görevin, kullanıcıların komutlarını anlayıp, bu komutları yerine getirmek için sana sağlanan araçları (tools) kullanarak veritabanı işlemlerini gerçekleştirmektir. Cevapların her zaman Türkçe, kısa, net ve bir esnafın kolayca anlayacağı, samimi bir dilde olmalı.
 
 **KIRILMASI İMKANSIZ, KRİTİK KURALLAR:**
@@ -60,10 +60,10 @@ const systemPrompt = `Sen, bir kasap dükkanı için geliştirilmiş "Esnaf Deft
 3. ÖNCE BİLGİ TOPLA.
 4. HATALARI BİLDİR.
 5. BİLGİ SINIRLARI.
-6. KULLANICI ID'Sİ İSTEME.
+6. KULLANICI ID'Sİ İSTEME: Kullanıcı ID'si sana sistem tarafından otomatik olarak veriliyor. Kullanıcıdan asla ve asla ID, kimlik veya benzeri bir bilgi isteme.
 7. ASIL AMACIN ARAÇ KULLANMAK.`;
 
-// Fetch chat history from Firestore
+// Geçmiş sohbeti Firestore’dan çek
 export async function getChatHistory(userId: string): Promise<Message[]> {
   if (!userId) return [];
   const historyRef = doc(db, 'chatHistories', userId);
@@ -82,7 +82,7 @@ export async function getChatHistory(userId: string): Promise<Message[]> {
   return [];
 }
 
-// Convert history messages to Genkit format
+// Geçmiş mesajları Genkit formatına dönüştür
 const toGenkitMessages = (history: Message[]): MessageData[] => {
   const messages: MessageData[] = [];
   for (const m of history) {
@@ -111,7 +111,7 @@ const toGenkitMessages = (history: Message[]): MessageData[] => {
   return messages;
 };
 
-// Main AI chat handler
+// Ana AI chat işleyicisi
 export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<ChatWithAssistantOutput> {
   const { newMessage, userId } = input;
   const historyRef = doc(db, 'chatHistories', userId);

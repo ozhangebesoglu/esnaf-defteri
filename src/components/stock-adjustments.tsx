@@ -1,10 +1,11 @@
+
 "use client"
 
 import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { PlusCircle, Loader2, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Loader2, Pencil, Trash2, MoreVertical } from "lucide-react";
 import { categorizeStockAdjustment } from "@/ai/flows/categorize-stock-adjustment";
 
 import { Button } from "@/components/ui/button";
@@ -17,8 +18,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
 import type { StockAdjustment, Product } from "@/lib/types";
 import { ProductIcon } from "./product-icons";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Skeleton } from "./ui/skeleton";
+
 
 const adjustmentSchema = z.object({
   id: z.string().optional(),
@@ -180,6 +186,7 @@ export default function StockAdjustments({ stockAdjustments, products, onAddStoc
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAdjustment, setSelectedAdjustment] = useState<StockAdjustment | undefined>(undefined);
   const [adjustmentToDelete, setAdjustmentToDelete] = useState<StockAdjustment | null>(null);
+  const isMobile = useIsMobile();
 
   const handleOpenDialog = (adjustment?: StockAdjustment) => {
     setSelectedAdjustment(adjustment);
@@ -200,6 +207,107 @@ export default function StockAdjustments({ stockAdjustments, products, onAddStoc
         setAdjustmentToDelete(null);
     }
   }
+
+  const renderLoadingSkeleton = () => (
+    <div className="space-y-2">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+    </div>
+  );
+
+  const renderDesktopView = () => (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Ürün</TableHead>
+            <TableHead className="text-center">Miktar</TableHead>
+            <TableHead>Açıklama</TableHead>
+            <TableHead>Kategori</TableHead>
+            <TableHead>Tarih</TableHead>
+            <TableHead className="w-[100px] text-right">İşlemler</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {stockAdjustments.length > 0 ? stockAdjustments.map((adj) => {
+            const product = products.find(p => p.id === adj.productId);
+            return (
+            <TableRow key={adj.id}>
+              <TableCell className="font-medium flex items-center gap-3">
+                {product && <ProductIcon type={product.type} />}
+                <span>{adj.productName}</span>
+              </TableCell>
+              <TableCell className={`text-center font-bold font-mono text-lg ${adj.quantity >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
+              </TableCell>
+              <TableCell>{adj.description}</TableCell>
+              <TableCell>
+                <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
+              </TableCell>
+              <TableCell>{new Date(adj.date).toLocaleString('tr-TR')}</TableCell>
+              <TableCell className="text-right space-x-1">
+                <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(adj)} disabled>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setAdjustmentToDelete(adj)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          )}) : (
+            <TableRow>
+              <TableCell colSpan={6} className="h-24 text-center">Kayıtlı stok hareketi bulunamadı.</TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+  );
+
+  const renderMobileView = () => (
+    <div className="space-y-3">
+        {stockAdjustments.length > 0 ? stockAdjustments.map((adj) => {
+            const product = products.find(p => p.id === adj.productId);
+            return (
+            <Card key={adj.id}>
+                <CardContent className="p-4 flex justify-between items-start">
+                    <div className="flex items-start gap-4 flex-1">
+                        {product && <ProductIcon type={product.type} />}
+                        <div className="flex-1 space-y-1">
+                            <p className="font-semibold">{adj.productName}</p>
+                            <p className="text-sm text-muted-foreground">{adj.description}</p>
+                            <div className="flex items-center gap-2 pt-1">
+                                <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
+                                <p className="text-xs text-muted-foreground">{new Date(adj.date).toLocaleDateString('tr-TR')}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                        <p className={`font-mono font-bold text-lg whitespace-nowrap ${adj.quantity >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                          {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
+                        </p>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2" onClick={(e) => e.stopPropagation()}>
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                 <DropdownMenuItem onClick={() => setAdjustmentToDelete(adj)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                    Sil
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </CardContent>
+            </Card>
+        )}) : (
+            <div className="h-24 text-center flex items-center justify-center">
+                <p>Kayıtlı stok hareketi bulunamadı.</p>
+            </div>
+        )}
+    </div>
+  );
+
 
   return (
     <>
@@ -243,50 +351,7 @@ export default function StockAdjustments({ stockAdjustments, products, onAddStoc
           </Dialog>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ürün</TableHead>
-                <TableHead className="text-center">Miktar</TableHead>
-                <TableHead>Açıklama</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead>Tarih</TableHead>
-                <TableHead className="w-[100px] text-right">İşlemler</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {stockAdjustments.length > 0 ? stockAdjustments.map((adj) => {
-                const product = products.find(p => p.id === adj.productId);
-                return (
-                <TableRow key={adj.id}>
-                  <TableCell className="font-medium flex items-center gap-3">
-                    {product && <ProductIcon type={product.type} />}
-                    <span>{adj.productName}</span>
-                  </TableCell>
-                  <TableCell className={`text-center font-bold font-mono text-lg ${adj.quantity >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {adj.quantity > 0 ? `+${adj.quantity}` : adj.quantity}
-                  </TableCell>
-                  <TableCell>{adj.description}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={`${categoryColors[adj.category]}`}>{adj.category}</Badge>
-                  </TableCell>
-                  <TableCell>{new Date(adj.date).toLocaleString('tr-TR')}</TableCell>
-                  <TableCell className="text-right space-x-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(adj)} disabled>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setAdjustmentToDelete(adj)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )}) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">Kayıtlı stok hareketi bulunamadı.</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+           {isMobile === undefined ? renderLoadingSkeleton() : (isMobile ? renderMobileView() : renderDesktopView())}
         </CardContent>
       </Card>
     </>

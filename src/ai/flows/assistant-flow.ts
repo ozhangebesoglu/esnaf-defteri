@@ -25,7 +25,7 @@ import {
   deleteStockAdjustmentTool,
 } from '@/ai/tools/esnaf-tools';
 import type { Message, ChatHistory } from '@/lib/types';
-import type { MessageData, ToolRequestPart, ToolResponsePart } from 'genkit';
+import type { MessageData, ToolRequest, ToolRequestPart, ToolResponsePart } from 'genkit';
 
 
 const allTools = [

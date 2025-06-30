@@ -12,7 +12,7 @@ interface SalesTransactionsProps {
   onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'|'userId'>) => void;
   onUpdateSale: (data: Order) => void;
   onDeleteSale: (id: string) => void;
-  onAddCashSale: (data: { description: string, total: number }) => void;
+  onAddCashSale: (data: { description: string, total: number, paymentMethod: 'cash' | 'visa' }) => void;
 }
 
 export default function SalesTransactions({

@@ -138,7 +138,7 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
   const modelChoice = llmResponse.choices[0];
   history.push(modelChoice.message); // Add the model's full response (text or tool_request) to history
 
-  const toolRequests = modelChoice.message.toolRequest;
+  const toolRequests = modelChoice.toolRequests;
 
   // 4. Handle tool requests if the model generated any
   if (toolRequests && toolRequests.length > 0) {

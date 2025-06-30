@@ -567,6 +567,21 @@ export default function DashboardPage() {
       description: `Kasa sayımı tamamlandı. Nakit Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(cashDifference)}`,
     });
   };
+
+  const handleUpdateCashboxHistory = async (data: CashboxHistory) => {
+    if (!user) return;
+    const { id, ...historyData } = data;
+    
+    // Recalculate difference based on potentially updated counted cash
+    const cashDifference = (historyData.countedCash ?? 0) - (historyData.expectedCash ?? 0);
+    const updatedData = { ...historyData, cashDifference };
+
+    await updateDoc(doc(db, "cashboxHistory", id), updatedData);
+    toast({
+      title: "Kasa Kaydı Güncellendi",
+      description: `${new Date(data.date).toLocaleDateString('tr-TR')} tarihli kasa kaydı güncellendi.`,
+    });
+  };
   
   const creditSales = orders.filter(o => o.customerId !== 'CASH_SALE');
   const cashSales = orders.filter(o => o.customerId === 'CASH_SALE');
@@ -646,6 +661,7 @@ export default function DashboardPage() {
                   cashOut={cashOutToday}
                   expectedCash={expectedCash}
                   onDayClose={handleDayClose}
+                  onUpdateHistory={handleUpdateCashboxHistory}
                />;
       case 'uyarilar':
         return <Monitoring alerts={alerts} />;

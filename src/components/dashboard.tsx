@@ -60,7 +60,7 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-            <div className="text-2xl font-bold">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalRevenue)}</div>
+            <div className="text-xl font-bold sm:text-2xl">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalRevenue)}</div>
             <p className="text-xs text-muted-foreground">Grafikteki verilere göre</p>
           </CardContent>
         </Card>
@@ -70,7 +70,7 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-            <div className="text-2xl font-bold text-destructive">
+            <div className="text-xl font-bold text-destructive sm:text-2xl">
               {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalReceivables)}
             </div>
             <p className="text-xs text-muted-foreground">{receivablesCount} müşteriden</p>
@@ -82,7 +82,7 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-xl font-bold text-green-600 sm:text-2xl">
              {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Math.abs(totalDebts))}
             </div>
             <p className="text-xs text-muted-foreground">{debtsCount} müşteriye</p>
@@ -94,7 +94,7 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-            <div className="text-2xl font-bold">{customers.length}</div>
+            <div className="text-xl font-bold sm:text-2xl">{customers.length}</div>
             <p className="text-xs text-muted-foreground">toplam kayıtlı müşteri</p>
           </CardContent>
         </Card>

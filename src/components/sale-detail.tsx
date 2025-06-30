@@ -56,41 +56,43 @@ export default function SaleDetail({ order, customer, onBack, onUpdateSale }: {
           </DialogContent>
         </Dialog>
 
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" className="h-7 w-7" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4" />
-          <span className="sr-only">Geri</span>
-        </Button>
-        <div>
-          <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-            Sipariş #{order.id}
-          </h1>
-          <p className="text-sm text-muted-foreground">Tarih: {new Date(order.date).toLocaleString('tr-TR')}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" className="h-7 w-7 flex-shrink-0" onClick={onBack}>
+                <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">Geri</span>
+            </Button>
+            <div className="flex-1">
+                <h1 className="text-xl font-semibold tracking-tight">
+                    Sipariş #{order.id}
+                </h1>
+                <p className="text-sm text-muted-foreground">Tarih: {new Date(order.date).toLocaleString('tr-TR')}</p>
+            </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-2">
             <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
             <Button size="sm" variant="outline" onClick={() => setIsEditDialogOpen(true)}>
-                <Pencil className="h-4 w-4" />
-                Düzenle
+                <Pencil className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Düzenle</span>
             </Button>
         </div>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
             <CardHeader>
-                <CardTitle>Müşteri Bilgileri</CardTitle>
+                <CardTitle className="text-lg">Müşteri Bilgileri</CardTitle>
             </CardHeader>
             <CardContent>
                 {customer ? (
                     <div className="flex items-center gap-4">
-                         <Avatar className="hidden h-11 w-11 sm:flex">
-                            <AvatarImage src={`https://avatar.vercel.sh/${customer.email}.png`} alt={customer.name} />
+                         <Avatar className="h-11 w-11 flex-shrink-0">
+                            <AvatarImage src={`https://avatar.vercel.sh/${customer.email || customer.name}.png`} alt={customer.name} />
                             <AvatarFallback>{customer.name.charAt(0)}</AvatarFallback>
                         </Avatar>
-                        <div>
-                            <p className="font-semibold">{customer.name}</p>
-                            <p className="text-sm text-muted-foreground">{customer.email}</p>
+                        <div className="min-w-0 flex-1">
+                            <p className="font-semibold truncate">{customer.name}</p>
+                            <p className="text-sm text-muted-foreground truncate">{customer.email || 'E-posta belirtilmemiş'}</p>
                         </div>
                     </div>
                 ) : (
@@ -100,16 +102,16 @@ export default function SaleDetail({ order, customer, onBack, onUpdateSale }: {
         </Card>
         <Card>
             <CardHeader>
-                <CardTitle>Sipariş Özeti</CardTitle>
+                <CardTitle className="text-lg">Sipariş Özeti</CardTitle>
             </CardHeader>
-            <CardContent>
-                <div className="flex justify-between">
+            <CardContent className="flex flex-col gap-2">
+                <div className="flex items-baseline justify-between">
                     <span className="text-muted-foreground">Ürün/Hizmet Sayısı</span>
-                    <span>{order.items}</span>
+                    <span className="font-medium">{order.items}</span>
                 </div>
-                 <div className="flex justify-between font-semibold text-lg mt-2">
+                 <div className="flex items-baseline justify-between font-semibold">
                     <span className="text-muted-foreground">Toplam Tutar</span>
-                    <span>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total)}</span>
+                    <span className="text-lg">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.total)}</span>
                 </div>
             </CardContent>
         </Card>
@@ -117,10 +119,10 @@ export default function SaleDetail({ order, customer, onBack, onUpdateSale }: {
 
        <Card>
         <CardHeader>
-          <CardTitle>Satılan Ürünler/Açıklama</CardTitle>
+          <CardTitle className="text-lg">Satılan Ürünler/Açıklama</CardTitle>
         </CardHeader>
         <CardContent>
-            <p>{order.description}</p>
+            <p className="text-sm">{order.description}</p>
         </CardContent>
        </Card>
     </div>

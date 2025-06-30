@@ -1,9 +1,13 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read and write to their own documents.
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth.uid == userId;
+    // This rule allows a user to read and write to any document
+    // within any subcollection under their own user document (e.g., /users/USER_ID/customers/...).
+    // The recursive wildcard `{path=**}` ensures that all data collections are covered securely.
+    match /users/{userId}/{path=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

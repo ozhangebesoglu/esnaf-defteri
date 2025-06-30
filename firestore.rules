@@ -3,11 +3,18 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // This rule allows a user to read and write to any document
-    // within any subcollection under their own user document (e.g., /users/USER_ID/customers/...).
-    // The recursive wildcard `{path=**}` ensures that all data collections are covered securely.
-    match /users/{userId}/{path=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Kural 1: Her kullanıcının kendi altındaki tüm belgelere
+    // (customers, products, orders vb.) tam erişimini sağlar.
+    // Bu, bir kullanıcının başka bir kullanıcının verisini görmesini engeller.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Kural 2: Yapay zeka sohbet geçmişi koleksiyonu için kurallar.
+    // Bir kullanıcı sadece kendi sohbet geçmişini okuyabilir ve yazabilir.
+    // Doküman kimliği, kullanıcı kimliği ile aynı olmalıdır.
+    match /chatHistories/{userId} {
+      allow read, write: if request.auth.uid == userId;
     }
   }
 }

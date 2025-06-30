@@ -1,4 +1,5 @@
 
+
 export type FirestoreDoc = {
     id: string;
 }
@@ -34,8 +35,8 @@ export type Customer = FirestoreDoc & {
   balance: number;
 };
 
-export type MonitoringAlert = FirestoreDoc & {
-  userId: string; // This is generated client-side and not stored in Firestore, so it keeps userId
+export type MonitoringAlert = {
+  id: string;
   severity: 'low' | 'medium' | 'high';
   title: string;
   description: string;
@@ -88,3 +89,7 @@ export type Message = {
   role: 'user' | 'model' | 'tool';
   content: any; // string for user/model text, complex object for tool calls/responses
 };
+
+export type ChatHistory = {
+    messages: Message[];
+}

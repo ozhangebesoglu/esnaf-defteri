@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview AI tools for the Esnaf Defteri application that interact directly with Firestore.
  */
@@ -47,28 +48,33 @@ export const addSaleTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ customerName, description, total, userId }) => {
-    const customer = await findResourceByName<Customer>('customers', customerName, userId);
-    if (!customer) {
-      return `"${customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin veya bu isimde yeni bir müşteri eklemek isterseniz belirtin.`;
+    try {
+        const customer = await findResourceByName<Customer>('customers', customerName, userId);
+        if (!customer) {
+          return `"${customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin veya bu isimde yeni bir müşteri eklemek isterseniz belirtin.`;
+        }
+
+        const batch = adminDb.batch();
+        const newOrderRef = adminDb.collection('users').doc(userId).collection('orders').doc();
+        batch.set(newOrderRef, {
+          customerId: customer.id,
+          customerName: customer.name,
+          date: new Date().toISOString(),
+          status: 'Tamamlandı',
+          items: description.split(',').length,
+          description,
+          total,
+        });
+
+        const customerRef = adminDb.collection("users").doc(userId).collection("customers").doc(customer.id);
+        batch.update(customerRef, { balance: customer.balance + total });
+        
+        await batch.commit();
+        return `${customer.name} için ${total} TL tutarında satış başarıyla eklendi.`;
+    } catch (error) {
+        console.error("Error in addSaleTool: ", error);
+        return "Satış eklenirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
     }
-
-    const batch = adminDb.batch();
-    const newOrderRef = adminDb.collection('users').doc(userId).collection('orders').doc();
-    batch.set(newOrderRef, {
-      customerId: customer.id,
-      customerName: customer.name,
-      date: new Date().toISOString(),
-      status: 'Tamamlandı',
-      items: description.split(',').length,
-      description,
-      total,
-    });
-
-    const customerRef = adminDb.collection("users").doc(userId).collection("customers").doc(customer.id);
-    batch.update(customerRef, { balance: customer.balance + total });
-    
-    await batch.commit();
-    return `${customer.name} için ${total} TL tutarında satış başarıyla eklendi.`;
   }
 );
 
@@ -84,17 +90,22 @@ export const addCashSaleTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ description, total, userId, paymentMethod }) => {
-     await adminDb.collection('users').doc(userId).collection('orders').add({
-      customerId: 'CASH_SALE',
-      customerName: 'Peşin Satış',
-      date: new Date().toISOString(),
-      status: 'Tamamlandı',
-      items: description.split(',').length,
-      description,
-      total,
-      paymentMethod,
-    });
-    return `${total} TL tutarında peşin satış (${paymentMethod === 'cash' ? 'Nakit' : 'Visa'}) başarıyla eklendi.`;
+    try {
+         await adminDb.collection('users').doc(userId).collection('orders').add({
+          customerId: 'CASH_SALE',
+          customerName: 'Peşin Satış',
+          date: new Date().toISOString(),
+          status: 'Tamamlandı',
+          items: description.split(',').length,
+          description,
+          total,
+          paymentMethod,
+        });
+        return `${total} TL tutarında peşin satış (${paymentMethod === 'cash' ? 'Nakit' : 'Visa'}) başarıyla eklendi.`;
+    } catch (error) {
+        console.error("Error in addCashSaleTool: ", error);
+        return "Peşin satış eklenirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
+    }
   }
 );
 
@@ -117,29 +128,34 @@ export const addPaymentTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ customerName, description, total, userId, paymentMethod }) => {
-    const customer = await findResourceByName<Customer>('customers', customerName, userId);
-    if (!customer) {
-      return `"${customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin.`;
+    try {
+        const customer = await findResourceByName<Customer>('customers', customerName, userId);
+        if (!customer) {
+          return `"${customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin.`;
+        }
+
+        const batch = adminDb.batch();
+        const newPaymentRef = adminDb.collection('users').doc(userId).collection('orders').doc();
+        batch.set(newPaymentRef, {
+          customerId: customer.id,
+          customerName: customer.name,
+          description: description || (paymentMethod === 'cash' ? 'Nakit Ödeme' : 'Visa Ödeme'),
+          items: 1,
+          total: -total, // Payments are negative
+          status: 'Tamamlandı',
+          date: new Date().toISOString(),
+          paymentMethod,
+        });
+
+        const customerRef = adminDb.collection("users").doc(userId).collection("customers").doc(customer.id);
+        batch.update(customerRef, { balance: customer.balance - total });
+
+        await batch.commit();
+        return `${customer.name} adlı müşteriden ${total} TL ödeme (${paymentMethod === 'cash' ? 'Nakit' : 'Visa'}) başarıyla alındı.`;
+    } catch (error) {
+        console.error("Error in addPaymentTool: ", error);
+        return "Ödeme eklenirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
     }
-
-    const batch = adminDb.batch();
-    const newPaymentRef = adminDb.collection('users').doc(userId).collection('orders').doc();
-    batch.set(newPaymentRef, {
-      customerId: customer.id,
-      customerName: customer.name,
-      description: description || (paymentMethod === 'cash' ? 'Nakit Ödeme' : 'Visa Ödeme'),
-      items: 1,
-      total: -total, // Payments are negative
-      status: 'Tamamlandı',
-      date: new Date().toISOString(),
-      paymentMethod,
-    });
-
-    const customerRef = adminDb.collection("users").doc(userId).collection("customers").doc(customer.id);
-    batch.update(customerRef, { balance: customer.balance - total });
-
-    await batch.commit();
-    return `${customer.name} adlı müşteriden ${total} TL ödeme (${paymentMethod === 'cash' ? 'Nakit' : 'Visa'}) başarıyla alındı.`;
   }
 );
 
@@ -157,13 +173,18 @@ export const addExpenseTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ description, amount, category, userId }) => {
-    await adminDb.collection('users').doc(userId).collection('expenses').add({
-      date: new Date().toISOString(),
-      description,
-      amount,
-      category,
-    });
-    return `"${description}" açıklamasıyla ${amount} TL tutarında yeni bir gider başarıyla eklendi.`;
+    try {
+        await adminDb.collection('users').doc(userId).collection('expenses').add({
+          date: new Date().toISOString(),
+          description,
+          amount,
+          category,
+        });
+        return `"${description}" açıklamasıyla ${amount} TL tutarında yeni bir gider başarıyla eklendi.`;
+    } catch (error) {
+        console.error("Error in addExpenseTool: ", error);
+        return "Gider eklenirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
+    }
   }
 );
 
@@ -195,32 +216,37 @@ export const addStockAdjustmentTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ productName, quantity, description, category, userId }) => {
-    const product = await findResourceByName<Product>('products', productName, userId);
-    if (!product) {
-        return `"${productName}" adında bir ürün bulamadım. Lütfen ürün listesini kontrol edin.`;
+    try {
+        const product = await findResourceByName<Product>('products', productName, userId);
+        if (!product) {
+            return `"${productName}" adında bir ürün bulamadım. Lütfen ürün listesini kontrol edin.`;
+        }
+
+        const newStock = product.stock + quantity;
+        if (newStock < 0) {
+            return `İşlem iptal edildi. ${product.name} ürününün mevcut stoğu (${product.stock}) bu işlem için yetersiz. Stoğu ${Math.abs(quantity)} kadar azaltamazsınız.`;
+        }
+
+        const batch = adminDb.batch();
+        const newAdjRef = adminDb.collection('users').doc(userId).collection('stockAdjustments').doc();
+        batch.set(newAdjRef, {
+          productId: product.id,
+          productName: product.name,
+          date: new Date().toISOString(),
+          quantity,
+          description,
+          category,
+        });
+
+        const productRef = adminDb.collection("users").doc(userId).collection("products").doc(product.id);
+        batch.update(productRef, { stock: newStock });
+
+        await batch.commit();
+        return `${product.name} ürünü için stok hareketi başarıyla eklendi. Yeni stok: ${newStock}.`;
+    } catch (error) {
+        console.error("Error in addStockAdjustmentTool: ", error);
+        return "Stok hareketi eklenirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
     }
-
-    const newStock = product.stock + quantity;
-    if (newStock < 0) {
-        return `İşlem iptal edildi. ${product.name} ürününün mevcut stoğu (${product.stock}) bu işlem için yetersiz. Stoğu ${Math.abs(quantity)} kadar azaltamazsınız.`;
-    }
-
-    const batch = adminDb.batch();
-    const newAdjRef = adminDb.collection('users').doc(userId).collection('stockAdjustments').doc();
-    batch.set(newAdjRef, {
-      productId: product.id,
-      productName: product.name,
-      date: new Date().toISOString(),
-      quantity,
-      description,
-      category,
-    });
-
-    const productRef = adminDb.collection("users").doc(userId).collection("products").doc(product.id);
-    batch.update(productRef, { stock: newStock });
-
-    await batch.commit();
-    return `${product.name} ürünü için stok hareketi başarıyla eklendi. Yeni stok: ${newStock}.`;
   }
 );
 
@@ -237,41 +263,46 @@ export const addCustomerTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ customerName, initialDebt, userId }) => {
-    const existingCustomer = await findResourceByName<Customer>('customers', customerName, userId);
-    if (existingCustomer) {
-      return `"${customerName}" adında bir müşteri zaten mevcut. Farklı bir isimle tekrar deneyin.`;
-    }
-    
-    const batch = adminDb.batch();
-    const newCustomerRef = adminDb.collection('users').doc(userId).collection('customers').doc();
-    batch.set(newCustomerRef, { 
-        name: customerName, 
-        email: '', 
-        balance: initialDebt || 0 
-    });
-
-    if (initialDebt && initialDebt > 0) {
-        const newOrderRef = adminDb.collection('users').doc(userId).collection('orders').doc();
-        batch.set(newOrderRef, {
-            customerId: newCustomerRef.id,
-            customerName,
-            date: new Date().toISOString(),
-            status: 'Tamamlandı',
-            items: 1,
-            description: 'Başlangıç Bakiyesi / Devir',
-            total: initialDebt,
+    try {
+        const existingCustomer = await findResourceByName<Customer>('customers', customerName, userId);
+        if (existingCustomer) {
+          return `"${customerName}" adında bir müşteri zaten mevcut. Farklı bir isimle tekrar deneyin.`;
+        }
+        
+        const batch = adminDb.batch();
+        const newCustomerRef = adminDb.collection('users').doc(userId).collection('customers').doc();
+        batch.set(newCustomerRef, { 
+            name: customerName, 
+            email: '', 
+            balance: initialDebt || 0 
         });
+
+        if (initialDebt && initialDebt > 0) {
+            const newOrderRef = adminDb.collection('users').doc(userId).collection('orders').doc();
+            batch.set(newOrderRef, {
+                customerId: newCustomerRef.id,
+                customerName,
+                date: new Date().toISOString(),
+                status: 'Tamamlandı',
+                items: 1,
+                description: 'Başlangıç Bakiyesi / Devir',
+                total: initialDebt,
+            });
+        }
+        
+        await batch.commit();
+        
+        let responseMessage = `"${customerName}" adlı yeni müşteri başarıyla eklendi.`;
+        if (initialDebt && initialDebt > 0) {
+            responseMessage += ` Başlangıç borcu: ${initialDebt} TL.`;
+        } else {
+            responseMessage += ` Bakiyesi 0 TL olarak ayarlandı.`
+        }
+        return responseMessage;
+    } catch (error) {
+        console.error("Error in addCustomerTool: ", error);
+        return "Müşteri eklenirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
     }
-    
-    await batch.commit();
-    
-    let responseMessage = `"${customerName}" adlı yeni müşteri başarıyla eklendi.`;
-    if (initialDebt && initialDebt > 0) {
-        responseMessage += ` Başlangıç borcu: ${initialDebt} TL.`;
-    } else {
-        responseMessage += ` Bakiyesi 0 TL olarak ayarlandı.`
-    }
-    return responseMessage;
   }
 );
 
@@ -285,20 +316,25 @@ export const deleteCustomerTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ customerName, userId }) => {
-    const customer = await findResourceByName<Customer>('customers', customerName, userId);
-    if (!customer) {
-        return `"${customerName}" adında bir müşteri bulamadım.`;
+    try {
+        const customer = await findResourceByName<Customer>('customers', customerName, userId);
+        if (!customer) {
+            return `"${customerName}" adında bir müşteri bulamadım.`;
+        }
+
+        const batch = adminDb.batch();
+        batch.delete(adminDb.collection('users').doc(userId).collection('customers').doc(customer.id));
+
+        const ordersQuery = adminDb.collection('users').doc(userId).collection('orders').where("customerId", "==", customer.id);
+        const ordersSnapshot = await ordersQuery.get();
+        ordersSnapshot.forEach(doc => batch.delete(doc.ref));
+
+        await batch.commit();
+        return `${customer.name} adlı müşteri ve tüm kayıtları başarıyla silindi.`;
+    } catch (error) {
+        console.error("Error in deleteCustomerTool: ", error);
+        return "Müşteri silinirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
     }
-
-    const batch = adminDb.batch();
-    batch.delete(adminDb.collection('users').doc(userId).collection('customers').doc(customer.id));
-
-    const ordersQuery = adminDb.collection('users').doc(userId).collection('orders').where("customerId", "==", customer.id);
-    const ordersSnapshot = await ordersQuery.get();
-    ordersSnapshot.forEach(doc => batch.delete(doc.ref));
-
-    await batch.commit();
-    return `${customer.name} adlı müşteri ve tüm kayıtları başarıyla silindi.`;
   }
 );
 
@@ -312,14 +348,19 @@ export const deleteProductTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ productName, userId }) => {
-     const product = await findResourceByName<Product>('products', productName, userId);
-     if (!product) {
-        return `"${productName}" adında bir ürün bulamadım.`;
-     }
-     
-     await adminDb.collection('users').doc(userId).collection('products').doc(product.id).delete();
-     // Note: Associated stock adjustments are not deleted to preserve history, but could be.
-     return `${product.name} adlı ürün başarıyla silindi.`;
+    try {
+        const product = await findResourceByName<Product>('products', productName, userId);
+        if (!product) {
+           return `"${productName}" adında bir ürün bulamadım.`;
+        }
+        
+        await adminDb.collection('users').doc(userId).collection('products').doc(product.id).delete();
+        // Note: Associated stock adjustments are not deleted to preserve history, but could be.
+        return `${product.name} adlı ürün başarıyla silindi.`;
+    } catch (error) {
+        console.error("Error in deleteProductTool: ", error);
+        return "Ürün silinirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
+    }
   }
 );
 
@@ -333,28 +374,33 @@ export const deleteSaleTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ saleId, userId }) => {
-      const saleRef = adminDb.collection('users').doc(userId).collection('orders').doc(saleId);
-      const saleSnap = await saleRef.get();
+    try {
+        const saleRef = adminDb.collection('users').doc(userId).collection('orders').doc(saleId);
+        const saleSnap = await saleRef.get();
 
-      if (!saleSnap.exists) {
-          return `"${saleId}" numaralı bir satış veya ödeme bulamadım.`;
-      }
-      const sale = saleSnap.data() as Order;
+        if (!saleSnap.exists) {
+            return `"${saleId}" numaralı bir satış veya ödeme bulamadım.`;
+        }
+        const sale = saleSnap.data() as Order;
 
-      const batch = adminDb.batch();
-      batch.delete(saleRef);
+        const batch = adminDb.batch();
+        batch.delete(saleRef);
 
-      if (sale.customerId && sale.customerId !== 'CASH_SALE') {
-          const customerRef = adminDb.collection('users').doc(userId).collection('customers').doc(sale.customerId);
-          const customerSnap = await customerRef.get();
-          if (customerSnap.exists) {
-              const customer = customerSnap.data() as Customer;
-              batch.update(customerRef, { balance: customer.balance - sale.total });
-          }
-      }
-      
-      await batch.commit();
-      return `'${sale.description}' açıklamalı satış/ödeme işlemi başarıyla silindi.`;
+        if (sale.customerId && sale.customerId !== 'CASH_SALE') {
+            const customerRef = adminDb.collection('users').doc(userId).collection('customers').doc(sale.customerId);
+            const customerSnap = await customerRef.get();
+            if (customerSnap.exists) {
+                const customer = customerSnap.data() as Customer;
+                batch.update(customerRef, { balance: customer.balance - sale.total });
+            }
+        }
+        
+        await batch.commit();
+        return `'${sale.description}' açıklamalı satış/ödeme işlemi başarıyla silindi.`;
+    } catch (error) {
+        console.error("Error in deleteSaleTool: ", error);
+        return "Satış/ödeme silinirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
+    }
   }
 );
 
@@ -368,16 +414,21 @@ export const deleteExpenseTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ expenseId, userId }) => {
-      const expenseRef = adminDb.collection('users').doc(userId).collection('expenses').doc(expenseId);
-      const expenseSnap = await expenseRef.get();
+    try {
+        const expenseRef = adminDb.collection('users').doc(userId).collection('expenses').doc(expenseId);
+        const expenseSnap = await expenseRef.get();
 
-       if (!expenseSnap.exists) {
-          return `"${expenseId}" numaralı bir gider bulamadım.`;
-      }
-      
-      const expense = expenseSnap.data() as Expense;
-      await expenseRef.delete();
-      return `'${expense.description}' başlıklı gider kaydı başarıyla silindi.`;
+         if (!expenseSnap.exists) {
+            return `"${expenseId}" numaralı bir gider bulamadım.`;
+        }
+        
+        const expense = expenseSnap.data() as Expense;
+        await expenseRef.delete();
+        return `'${expense.description}' başlıklı gider kaydı başarıyla silindi.`;
+    } catch (error) {
+        console.error("Error in deleteExpenseTool: ", error);
+        return "Gider silinirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
+    }
   }
 );
 
@@ -393,27 +444,32 @@ export const deleteStockAdjustmentTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ adjustmentId, userId }) => {
-      const adjRef = adminDb.collection('users').doc(userId).collection('stockAdjustments').doc(adjustmentId);
-      const adjSnap = await adjRef.get();
+    try {
+        const adjRef = adminDb.collection('users').doc(userId).collection('stockAdjustments').doc(adjustmentId);
+        const adjSnap = await adjRef.get();
 
-       if (!adjSnap.exists) {
-          return `"${adjustmentId}" numaralı bir stok hareketi bulamadım.`;
-      }
-      const adj = adjSnap.data() as StockAdjustment;
+         if (!adjSnap.exists) {
+            return `"${adjustmentId}" numaralı bir stok hareketi bulamadım.`;
+        }
+        const adj = adjSnap.data() as StockAdjustment;
 
-      const batch = adminDb.batch();
-      batch.delete(adjRef);
+        const batch = adminDb.batch();
+        batch.delete(adjRef);
 
-      if (adj.productId) {
-          const productRef = adminDb.collection('users').doc(userId).collection('products').doc(adj.productId);
-          const productSnap = await productRef.get();
-          if (productSnap.exists) {
-              const product = productSnap.data() as Product;
-              batch.update(productRef, { stock: product.stock - adj.quantity });
-          }
-      }
+        if (adj.productId) {
+            const productRef = adminDb.collection('users').doc(userId).collection('products').doc(adj.productId);
+            const productSnap = await productRef.get();
+            if (productSnap.exists) {
+                const product = productSnap.data() as Product;
+                batch.update(productRef, { stock: product.stock - adj.quantity });
+            }
+        }
 
-      await batch.commit();
-      return `'${adj.description}' açıklamalı stok hareketi başarıyla silindi.`;
+        await batch.commit();
+        return `'${adj.description}' açıklamalı stok hareketi başarıyla silindi.`;
+    } catch (error) {
+        console.error("Error in deleteStockAdjustmentTool: ", error);
+        return "Stok hareketi silinirken bir veritabanı hatası oluştu. Lütfen tekrar deneyin."
+    }
   }
 );

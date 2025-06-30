@@ -1,7 +1,7 @@
 
 # ButcherTrack Mobile (Esnaf Defteri)
 
-ButcherTrack Mobile, modern kasaplar ve küçük et işletmeleri gibi geleneksel esnafların dijital dönüşümünü hedefleyen, kapsamlı ve kullanıcı dostu bir mobil ciro, stok ve cari hesap takip uygulamasıdır.
+ButcherTrack Mobile, modern kasaplar ve küçük et işletmeleri gibi geleneksel esnafların dijital dönüşümünü hedefleyen, kapsamlı ve kullanıcı dostu bir mobil ciro, stok ve cari hesap takip uygulamasıdır. Bu uygulama, sadece bir prototip değil; güvenli, ölçeklenebilir ve yayına hazır bir üründür.
 
 ## Proje Hikayesi
 
@@ -26,28 +26,36 @@ Bu proje, modern web teknolojileri ve yapay zeka destekli bir geliştirme sürec
 *   **Framework:** **Next.js 15 (App Router)** kullanarak sunucu bileşenleri (Server Components) ve sunucu eylemleri (Server Actions) ile yüksek performanslı ve modern bir yapı kurduk.
 *   **UI ve Tasarım:** Arayüz için **React**, **ShadCN UI** bileşen kütüphanesi ve **Tailwind CSS** kullandık. Bu sayede hem estetik hem de tamamen duyarlı (responsive) bir tasarım elde ettik. Tüm cihazlarda sorunsuz bir kullanıcı deneyimi sunar.
 *   **Yapay Zeka (AI):** Projenin kalbinde **Google Gemini** ve **Genkit** yer alıyor.
-    *   Kullanıcı komutlarını anlamak ve veritabanı işlemlerini tetiklemek için `tool-use` yeteneğine sahip bir AI asistanı oluşturduk.
-    *   Gider ve stok hareketi açıklamalarını otomatik olarak kategorize eden daha küçük, odaklanmış AI akışları (flows) geliştirdik.
-*   **Veritabanı ve Kimlik Doğrulama:** **Firebase**'in gücünden sonuna kadar yararlandık. **Firestore**'u NoSQL veritabanı olarak, **Firebase Authentication**'ı ise güvenli kullanıcı yönetimi için kullandık.
-*   **Form Yönetimi ve Doğrulama:** Kullanıcı girişlerini yönetmek için **React Hook Form** ve veri şemalarını doğrulamak için **Zod** kütüphanelerini kullandık. Bu, hem geliştirme sürecini hızlandırdı hem de veri tutarlılığını artırdı.
+    *   Kullanıcı komutlarını anlamak ve veritabanı işlemlerini tetiklemek için `tool-use` yeteneğine sahip, sohbet geçmişini hatırlayan durumlu (stateful) bir AI asistanı oluşturduk.
+    *   Asistanın, yapmadığı bir işlemi "yaptım" demesini engelleyen güvenlik kontrolleri eklendi.
+    *   Tüm AI araçları, olası veritabanı hatalarını yakalayıp kullanıcıya anlaşılır mesajlar dönecek şekilde sağlamlaştırıldı.
+*   **Veritabanı ve Güvenlik:** **Firebase**'in gücünden sonuna kadar yararlandık.
+    *   **Firestore**'u NoSQL veritabanı olarak kullandık ve her kullanıcının verisini (`users/{userId}/{...}`) diğerlerinden tamamen izole edecek şekilde güvenli bir mimari oluşturduk.
+    *   **Firestore Güvenlik Kuralları** ile her kullanıcının yalnızca kendi verilerine erişebileceğini sunucu tarafında garanti altına aldık.
+    *   **Firebase Authentication**'ı güvenli kullanıcı yönetimi için kullandık.
+*   **Form Yönetimi ve Doğrulama:** Kullanıcı girişlerini yönetmek için **React Hook Form** ve veri şemalarını doğrulamak için **Zod** kütüphanelerini kullandık.
+*   **Hata Yönetimi:** Uygulama genelindeki tüm veritabanı işlemlerine, olası hataları yakalayıp kullanıcıya anlaşılır bildirimler gösteren `try...catch` blokları eklendi.
 
-### 🧗‍♀️ Karşılaştığımız Zorluklar (Challenges we ran into)
+### 🧗‍♀️ Karşılaştığımız Zorluklar ve Çözümleri (Challenges & Solutions)
 
-*   **Tip Güvenliği ve Prop Zincirleri:** Uygulama büyüdükçe, bileşenler arasında veri (props) aktarımı karmaşıklaştı. Özellikle `onAddPayment` gibi bir fonksiyonu en üst bileşenden en alt forma kadar hatasız bir şekilde iletmek, TypeScript tip tanımlarında dikkatli ve tutarlı olmayı gerektirdi. Birkaç kez derleme hataları alarak bu zincirdeki eksik halkaları tamamlamayı öğrendik.
-*   **Veri Bütünlüğü:** Bir müşteriyi silerken tüm işlem kayıtlarını da silmek veya bir satışı güncellerken müşteri bakiyesini doğru bir şekilde yeniden hesaplamak gibi konularda veri bütünlüğünü sağlamak kritikti. Bu işlemleri **Firebase Write Batches** kullanarak atomik hale getirdik.
-*   **Güvenlik Kuralları:** En büyük zorluklardan biri, **Firestore Güvenlik Kuralları**'nı doğru bir şekilde yapılandırmaktı. İlk başta genel kurallar AI asistanının izinlerini kısıtladı. Sonrasında, her koleksiyon (`customers`, `chatHistories` vb.) için her kullanıcının yalnızca kendi verisine erişebileceği (`request.auth.uid == resource.data.userId`) spesifik ve güvenli kurallar yazarak bu sorunu aştık.
+*   **Güvenlik ve Yetkilendirme:** En büyük zorluk, **Firestore Güvenlik Kuralları**'nı doğru bir şekilde yapılandırarak her kullanıcının verisini diğerinden tamamen izole etmekti. İlk başta genel kurallar, AI asistanının bile yetki hataları almasına neden oluyordu.
+    *   **Çözüm:** Veritabanı mimarisini, tüm kullanıcı verilerini `users/{userId}` koleksiyonu altına taşıyarak yeniden tasarladık. Ardından, her kullanıcının yalnızca kendi `{userId}` yolu altındaki belgelere erişmesine izin veren (`allow read, write: if request.auth.uid == userId;`) kesin ve net güvenlik kuralları yazdık. Bu, sorunu kökünden çözdü.
+*   **Yapay Zeka Halüsinasyonları:** AI asistanı, bazen bir veritabanı işlemi yapmamasına rağmen "Tamam, ekledim" gibi yanıltıcı cevaplar verebiliyordu.
+    *   **Çözüm:** AI akışına bir güvenlik kontrolü ekledik. Eğer modelin cevabı bir onay ifadesi içeriyor ancak herhangi bir araç (tool) çağrısı yapmıyorsa, bu cevap engelleniyor ve kullanıcıdan daha net bir komut vermesi isteniyor.
+*   **Dayanıksız Veritabanı İşlemleri:** Uygulama içindeki fonksiyonlar, ağ hatası veya başka bir sorun olduğunda çöküyor ve kullanıcıya bir bildirim göstermiyordu.
+    *   **Çözüm:** Hem istemci tarafındaki (`dashboard/page.tsx`) hem de AI araçlarındaki (`esnaf-tools.ts`) tüm veritabanı operasyonlarını `try...catch` blokları içine aldık. Herhangi bir hata durumunda, kullanıcıya `toast` bildirimi ile anlaşılır bir hata mesajı gösterilmesini sağladık.
 
 ### 🏆 Gurur Duyduğumuz Başarılar (Accomplishments that we're proud of)
 
 *   **Gerçek Bir Probleme Çözüm Üretmek:** Teknolojiyi, geleneksel bir iş modeline sahip esnafın hayatını kolaylaştıracak somut bir çözüme dönüştürmüş olmaktan gurur duyuyoruz.
-*   **Sezgisel AI Asistanı:** Karmaşık formlar yerine, "Ahmet'e 500 liralık mal sattım" gibi basit bir cümleyle işlem yapılabilmesini sağlayan AI asistanı, projemizin en yenilikçi ve gurur duyduğumuz yönü.
-*   **Production-Ready Bir Uygulama:** Bu proje, sadece bir prototip değil. Güvenlik kuralları, detaylı hata yönetimi ve tamamen duyarlı arayüzü ile yayına hazır, bütünlüklü bir uygulama. AI destekli bir geliştirme ortamında bu kadar kısa sürede bu olgunluk seviyesine ulaşmak büyük bir başarı.
+*   **Güvenilir ve Zeki AI Asistanı:** Karmaşık formlar yerine, "Ahmet'e 500 liralık mal sattım" gibi basit bir cümleyle işlem yapılabilmesini sağlayan AI asistanı, projemizin en yenilikçi ve gurur duyduğumuz yönü. Artık daha sağlam ve güvenilir.
+*   **Production-Ready Bir Uygulama:** Bu proje, sadece bir prototip değil. Detaylı güvenlik kuralları, kapsamlı hata yönetimi, izole veri mimarisi ve tamamen duyarlı arayüzü ile yayına hazır, bütünlüklü bir uygulama. AI destekli bir geliştirme ortamında bu kadar kısa sürede bu olgunluk seviyesine ulaşmak büyük bir başarı.
 
 ### 📚 Öğrendiklerimiz (What we learned)
 
 *   **AI, Arayüzün Kendisidir:** Yapay zekanın sadece bir "özellik" değil, aynı zamanda kullanıcı arayüzünün kendisi olabileceğini öğrendik. Doğru tasarlandığında, AI asistanı karmaşık formların ve menülerin yerini alabilir.
-*   **Backend Güvenliği Önceliktir:** Özellikle serverless bir mimaride, veritabanı güvenlik kurallarının uygulamanın en kritik katmanı olduğunu ve en başından dikkatle tasarlanması gerektiğini tecrübe ettik.
-*   **İteratif Geliştirmenin Gücü:** Hatalar yaparak, kullanıcı geri bildirimlerini (bu durumda AI partnerinin yönlendirmeleri ve derleyici hataları) dikkate alarak ürünü adım adım daha iyi bir hale getirmenin ne kadar etkili olduğunu gördük.
+*   **Backend Güvenliği Her Şeydir:** Özellikle serverless bir mimaride, veritabanı güvenlik kurallarının ve veri izolasyonunun uygulamanın en kritik katmanı olduğunu ve en başından dikkatle tasarlanması gerektiğini tecrübe ettik.
+*   **Kullanıcı Güveni ve Hata Yönetimi:** Bir işlemin sessizce başarısız olmasının, kullanıcı güvenini sarsan en kötü şeylerden biri olduğunu gördük. Sağlam hata yönetimi ve net geri bildirimler, profesyonel bir uygulamanın olmazsa olmazıdır.
 
 ### 🚀 Gelecek Planları (What's next for ButcherTrack)
 

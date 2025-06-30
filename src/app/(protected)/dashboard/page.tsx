@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, getDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, getDoc, where } from "firebase/firestore";
 
 import {
   Sidebar,
@@ -163,6 +164,13 @@ export default function DashboardPage() {
               items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             }
             setState(items);
+        }, (error) => {
+            console.error(`Error fetching ${collectionName}: `, error);
+            toast({
+                variant: "destructive",
+                title: "Veri Yükleme Hatası",
+                description: `"${collectionName}" verileri yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.`,
+            });
         });
     });
     
@@ -171,7 +179,7 @@ export default function DashboardPage() {
     // Cleanup listeners on component unmount
     return () => unsubscribes.forEach(unsub => unsub());
 
-  }, [user]);
+  }, [user, toast]);
 
   // --- Alerts Generation ---
   useEffect(() => {
@@ -184,7 +192,6 @@ export default function DashboardPage() {
       if (product.stock < 0) {
         generatedAlerts.push({
           id: `neg-stock-${product.id}`,
-          userId: user.uid,
           severity: 'high',
           title: `Negatif Stok: ${product.name}`,
           description: `${product.name} stok adedi ${product.stock}. Lütfen hemen inceleyin.`,
@@ -193,7 +200,6 @@ export default function DashboardPage() {
       } else if (product.stock > 0 && product.stock <= product.lowStockThreshold) {
         generatedAlerts.push({
           id: `low-stock-${product.id}`,
-          userId: user.uid,
           severity: 'medium',
           title: `Düşük Stok: ${product.name}`,
           description: `${product.name} stok adedi ${product.stock}, düşük stok eşiği olan ${product.lowStockThreshold}'e ulaştı.`,
@@ -214,7 +220,6 @@ export default function DashboardPage() {
           if (lastTransactionDate < thirtyDaysAgo) {
             generatedAlerts.push({
               id: `overdue-${customer.id}`,
-              userId: user.uid,
               severity: 'low',
               title: `Gecikmiş Bakiye: ${customer.name}`,
               description: `${customer.name} adlı müşterinin ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(customer.balance)} borcu var ve 30 günden uzun süredir işlem yapmadı.`,
@@ -241,87 +246,125 @@ export default function DashboardPage() {
 
   const getCollectionRef = (collectionName: string) => collection(db, 'users', user!.uid, collectionName);
 
+  const showGenericErrorToast = () => {
+    toast({
+        variant: "destructive",
+        title: "İşlem Başarısız",
+        description: "Bir hata oluştu. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.",
+    });
+  };
+
   // Customers
   const handleAddCustomer = async (data: { name: string; email?: string; initialDebt?: number }) => {
     if(!user) return;
-    const batch = writeBatch(db);
-    
-    const newCustomerRef = doc(getCollectionRef('customers'));
-    const newCustomerData = { 
-        name: data.name, 
-        email: data.email || '', 
-        balance: data.initialDebt || 0 
-    };
-    batch.set(newCustomerRef, newCustomerData);
-
-    if (data.initialDebt && data.initialDebt > 0) {
-        const newOrderRef = doc(getCollectionRef('orders'));
-        const newOrderData = {
-            customerId: newCustomerRef.id,
-            customerName: data.name,
-            date: new Date().toISOString(),
-            status: 'Tamamlandı',
-            items: 1,
-            description: 'Başlangıç Bakiyesi / Devir',
-            total: data.initialDebt,
+    try {
+        const batch = writeBatch(db);
+        
+        const newCustomerRef = doc(getCollectionRef('customers'));
+        const newCustomerData = { 
+            name: data.name, 
+            email: data.email || '', 
+            balance: data.initialDebt || 0 
         };
-        batch.set(newOrderRef, newOrderData);
+        batch.set(newCustomerRef, newCustomerData);
+
+        if (data.initialDebt && data.initialDebt > 0) {
+            const newOrderRef = doc(getCollectionRef('orders'));
+            const newOrderData = {
+                customerId: newCustomerRef.id,
+                customerName: data.name,
+                date: new Date().toISOString(),
+                status: 'Tamamlandı' as const,
+                items: 1,
+                description: 'Başlangıç Bakiyesi / Devir',
+                total: data.initialDebt,
+            };
+            batch.set(newOrderRef, newOrderData);
+        }
+        
+        await batch.commit();
+        toast({ title: "Müşteri Eklendi", description: `${data.name} başarıyla eklendi.` });
+    } catch(error) {
+        console.error("Error adding customer: ", error);
+        showGenericErrorToast();
     }
-    
-    await batch.commit();
-    toast({ title: "Müşteri Eklendi", description: `${data.name} başarıyla eklendi.` });
   };
   const handleUpdateCustomer = async (data: Customer) => {
     if(!user) return;
-    const { id, ...customerData } = data;
-    await updateDoc(doc(db, "users", user.uid, "customers", id), customerData);
-    toast({ title: "Müşteri Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+    try {
+        const { id, ...customerData } = data;
+        await updateDoc(doc(db, "users", user.uid, "customers", id), customerData);
+        toast({ title: "Müşteri Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+    } catch (error) {
+        console.error("Error updating customer: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleDeleteCustomer = async (id: string) => {
     if (!user) return;
-    const batch = writeBatch(db);
+    try {
+        const batch = writeBatch(db);
 
-    const customerRef = doc(db, "users", user.uid, "customers", id);
-    batch.delete(customerRef);
+        const customerRef = doc(db, "users", user.uid, "customers", id);
+        batch.delete(customerRef);
 
-    const ordersQuery = query(getCollectionRef('orders'), where("customerId", "==", id));
-    const ordersSnapshot = await getDocs(ordersQuery);
-    ordersSnapshot.forEach(doc => {
-      batch.delete(doc.ref);
-    });
+        const ordersQuery = query(getCollectionRef('orders'), where("customerId", "==", id));
+        const ordersSnapshot = await getDocs(ordersQuery);
+        ordersSnapshot.forEach(doc => {
+          batch.delete(doc.ref);
+        });
 
-    await batch.commit();
-    toast({ title: "Müşteri Silindi", description: "Müşteri ve ilgili tüm işlemleri başarıyla silindi.", variant: "destructive" });
+        await batch.commit();
+        toast({ title: "Müşteri Silindi", description: "Müşteri ve ilgili tüm işlemleri başarıyla silindi.", variant: "destructive" });
+    } catch (error) {
+        console.error("Error deleting customer: ", error);
+        showGenericErrorToast();
+    }
   };
 
   // Products
   const handleAddProduct = async (data: Omit<Product, 'id' | 'stock'>) => {
-     if(!user) return;
-    const newProduct = { ...data, stock: 0 };
-    await addDoc(getCollectionRef('products'), newProduct);
-    toast({ title: "Ürün Eklendi", description: `${newProduct.name} başarıyla eklendi.` });
+    if(!user) return;
+    try {
+        const newProduct = { ...data, stock: 0 };
+        await addDoc(getCollectionRef('products'), newProduct);
+        toast({ title: "Ürün Eklendi", description: `${newProduct.name} başarıyla eklendi.` });
+    } catch (error) {
+        console.error("Error adding product: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleUpdateProduct = async (data: Product) => {
     if(!user) return;
-    const { id, ...productData } = data;
-    await updateDoc(doc(db, "users", user.uid, "products", id), productData);
-    toast({ title: "Ürün Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+    try {
+        const { id, ...productData } = data;
+        await updateDoc(doc(db, "users", user.uid, "products", id), productData);
+        toast({ title: "Ürün Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+    } catch (error) {
+        console.error("Error updating product: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleDeleteProduct = async (id: string) => {
     if (!user) return;
-    const batch = writeBatch(db);
+    try {
+        const batch = writeBatch(db);
 
-    const productRef = doc(db, "users", user.uid, "products", id);
-    batch.delete(productRef);
+        const productRef = doc(db, "users", user.uid, "products", id);
+        batch.delete(productRef);
 
-    const adjustmentsQuery = query(getCollectionRef('stockAdjustments'), where("productId", "==", id));
-    const adjustmentsSnapshot = await getDocs(adjustmentsQuery);
-    adjustmentsSnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-    });
+        const adjustmentsQuery = query(getCollectionRef('stockAdjustments'), where("productId", "==", id));
+        const adjustmentsSnapshot = await getDocs(adjustmentsQuery);
+        adjustmentsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
 
-    await batch.commit();
-    toast({ title: "Ürün Silindi", description: "Ürün ve ilgili stok hareketleri başarıyla silindi.", variant: "destructive" });
+        await batch.commit();
+        toast({ title: "Ürün Silindi", description: "Ürün ve ilgili stok hareketleri başarıyla silindi.", variant: "destructive" });
+    } catch (error) {
+        console.error("Error deleting product: ", error);
+        showGenericErrorToast();
+    }
   };
 
   // Sales (Orders)
@@ -330,149 +373,191 @@ export default function DashboardPage() {
     const customer = customers.find(c => c.id === data.customerId);
     if (!customer) return;
 
-    const newOrder = {
-      ...data,
-      customerName: customer.name,
-      date: new Date().toISOString(),
-      status: 'Tamamlandı' as const,
-      items: data.description.split(',').length,
-    };
-    
-    const batch = writeBatch(db);
-    
-    const orderRef = doc(getCollectionRef('orders'));
-    batch.set(orderRef, newOrder);
-    
-    const customerRef = doc(db, "users", user.uid, "customers", customer.id);
-    batch.update(customerRef, { balance: customer.balance + data.total });
-    
-    await batch.commit();
-    toast({ title: "Satış Eklendi", description: "Yeni satış kaydı oluşturuldu." });
+    try {
+        const newOrder = {
+          ...data,
+          customerName: customer.name,
+          date: new Date().toISOString(),
+          status: 'Tamamlandı' as const,
+          items: data.description.split(',').length,
+        };
+        
+        const batch = writeBatch(db);
+        
+        const orderRef = doc(getCollectionRef('orders'));
+        batch.set(orderRef, newOrder);
+        
+        const customerRef = doc(db, "users", user.uid, "customers", customer.id);
+        batch.update(customerRef, { balance: customer.balance + data.total });
+        
+        await batch.commit();
+        toast({ title: "Satış Eklendi", description: "Yeni satış kaydı oluşturuldu." });
+    } catch (error) {
+        console.error("Error adding sale: ", error);
+        showGenericErrorToast();
+    }
   };
 
    const handleAddPayment = async (data: { customerId: string, total: number, description?: string, paymentMethod: 'cash' | 'visa' }) => {
     if(!user) return;
     const customer = customers.find(c => c.id === data.customerId);
     if (!customer) return;
-
-    const newPayment = {
-      customerId: data.customerId,
-      customerName: customer.name,
-      description: data.description || `${data.paymentMethod === 'cash' ? 'Nakit' : 'Visa'} Ödeme`,
-      items: 1,
-      total: -data.total,
-      status: 'Tamamlandı' as const,
-      date: new Date().toISOString(),
-      paymentMethod: data.paymentMethod,
-    };
     
-    const batch = writeBatch(db);
-    
-    const paymentRef = doc(getCollectionRef('orders'));
-    batch.set(paymentRef, newPayment);
+    try {
+        const newPayment = {
+          customerId: data.customerId,
+          customerName: customer.name,
+          description: data.description || `${data.paymentMethod === 'cash' ? 'Nakit' : 'Visa'} Ödeme`,
+          items: 1,
+          total: -data.total,
+          status: 'Tamamlandı' as const,
+          date: new Date().toISOString(),
+          paymentMethod: data.paymentMethod,
+        };
+        
+        const batch = writeBatch(db);
+        
+        const paymentRef = doc(getCollectionRef('orders'));
+        batch.set(paymentRef, newPayment);
 
-    const customerRef = doc(db, "users", user.uid, "customers", customer.id);
-    batch.update(customerRef, { balance: customer.balance - data.total });
+        const customerRef = doc(db, "users", user.uid, "customers", customer.id);
+        batch.update(customerRef, { balance: customer.balance - data.total });
 
-    await batch.commit();
-    toast({ title: "Ödeme Alındı", description: `${customer.name} için ödeme kaydedildi.` });
+        await batch.commit();
+        toast({ title: "Ödeme Alındı", description: `${customer.name} için ödeme kaydedildi.` });
+    } catch(error) {
+        console.error("Error adding payment: ", error);
+        showGenericErrorToast();
+    }
   };
 
   const handleUpdateSale = async (data: Order) => {
     if(!user) return;
-    const { id, ...orderData } = data;
     
-    const orderRef = doc(db, "users", user.uid, 'orders', id);
-    const orderSnap = await getDoc(orderRef);
+    try {
+        const { id, ...orderData } = data;
+        
+        const orderRef = doc(db, "users", user.uid, 'orders', id);
+        const orderSnap = await getDoc(orderRef);
 
-    if (!orderSnap.exists()) {
-        toast({ title: "Hata", description: "Güncellenecek işlem bulunamadı.", variant: "destructive" });
-        return;
-    }
+        if (!orderSnap.exists()) {
+            toast({ title: "Hata", description: "Güncellenecek işlem bulunamadı.", variant: "destructive" });
+            return;
+        }
 
-    const oldOrder = orderSnap.data() as Order;
-    
-    const batch = writeBatch(db);
-    
-    batch.update(orderRef, orderData);
+        const oldOrder = orderSnap.data() as Order;
+        
+        const batch = writeBatch(db);
+        
+        batch.update(orderRef, orderData);
 
-    if (oldOrder.customerId && oldOrder.customerId !== 'CASH_SALE') {
-        const totalDifference = orderData.total - oldOrder.total;
-        if (totalDifference !== 0) {
-            const customerRef = doc(db, "users", user.uid, 'customers', oldOrder.customerId);
-            const customerSnap = await getDoc(customerRef);
-            if (customerSnap.exists()) {
-                const customer = customerSnap.data() as Customer;
-                batch.update(customerRef, { balance: customer.balance + totalDifference });
+        if (oldOrder.customerId && oldOrder.customerId !== 'CASH_SALE') {
+            const totalDifference = orderData.total - oldOrder.total;
+            if (totalDifference !== 0) {
+                const customerRef = doc(db, "users", user.uid, 'customers', oldOrder.customerId);
+                const customerSnap = await getDoc(customerRef);
+                if (customerSnap.exists()) {
+                    const customer = customerSnap.data() as Customer;
+                    batch.update(customerRef, { balance: customer.balance + totalDifference });
+                }
             }
         }
+        
+        await batch.commit();
+        toast({ title: "İşlem Güncellendi", description: `#${id} numaralı işlem güncellendi.` });
+    } catch (error) {
+        console.error("Error updating sale: ", error);
+        showGenericErrorToast();
     }
-    
-    await batch.commit();
-    toast({ title: "İşlem Güncellendi", description: `#${id} numaralı işlem güncellendi.` });
   };
 
   const handleDeleteSale = async (id: string) => {
     if (!user) return;
-    const orderToDeleteRef = doc(db, "users", user.uid, 'orders', id);
-    const orderToDeleteSnap = await getDoc(orderToDeleteRef);
+    
+    try {
+        const orderToDeleteRef = doc(db, "users", user.uid, 'orders', id);
+        const orderToDeleteSnap = await getDoc(orderToDeleteRef);
 
-    if (!orderToDeleteSnap.exists()) return;
-    
-    const orderToDelete = orderToDeleteSnap.data() as Order;
-    
-    const batch = writeBatch(db);
-    
-    batch.delete(orderToDeleteRef);
+        if (!orderToDeleteSnap.exists()) return;
+        
+        const orderToDelete = orderToDeleteSnap.data() as Order;
+        
+        const batch = writeBatch(db);
+        
+        batch.delete(orderToDeleteRef);
 
-    if(orderToDelete.customerId !== 'CASH_SALE') {
-        const customerRef = doc(db, "users", user.uid, "customers", orderToDelete.customerId);
-        const customerSnap = await getDoc(customerRef);
-        if (customerSnap.exists()) {
-            const customer = customerSnap.data() as Customer;
-            batch.update(customerRef, { balance: customer.balance - orderToDelete.total });
+        if(orderToDelete.customerId !== 'CASH_SALE') {
+            const customerRef = doc(db, "users", user.uid, "customers", orderToDelete.customerId);
+            const customerSnap = await getDoc(customerRef);
+            if (customerSnap.exists()) {
+                const customer = customerSnap.data() as Customer;
+                batch.update(customerRef, { balance: customer.balance - orderToDelete.total });
+            }
         }
+        
+        await batch.commit();
+        toast({ title: "İşlem Silindi", description: "Satış veya ödeme kaydı silindi.", variant: "destructive" });
+    } catch (error) {
+        console.error("Error deleting sale: ", error);
+        showGenericErrorToast();
     }
-    
-    await batch.commit();
-    toast({ title: "İşlem Silindi", description: "Satış veya ödeme kaydı silindi.", variant: "destructive" });
   };
 
   // Cash Sales
   const handleAddCashSale = async (data: { description: string, total: number, paymentMethod: 'cash' | 'visa' }) => {
     if(!user) return;
-    const newOrder = {
-      customerId: 'CASH_SALE',
-      customerName: 'Peşin Satış',
-      date: new Date().toISOString(),
-      status: 'Tamamlandı' as const,
-      items: data.description.split(',').length,
-      description: data.description,
-      total: data.total,
-      paymentMethod: data.paymentMethod,
-    };
-    
-    await addDoc(getCollectionRef('orders'), newOrder);
-    toast({ title: "Peşin Satış Eklendi", description: "Yeni peşin satış kaydı oluşturuldu." });
+    try {
+        const newOrder = {
+          customerId: 'CASH_SALE',
+          customerName: 'Peşin Satış',
+          date: new Date().toISOString(),
+          status: 'Tamamlandı' as const,
+          items: data.description.split(',').length,
+          description: data.description,
+          total: data.total,
+          paymentMethod: data.paymentMethod,
+        };
+        
+        await addDoc(getCollectionRef('orders'), newOrder);
+        toast({ title: "Peşin Satış Eklendi", description: "Yeni peşin satış kaydı oluşturuldu." });
+    } catch (error) {
+        console.error("Error adding cash sale: ", error);
+        showGenericErrorToast();
+    }
   };
 
   // Expenses
   const handleAddExpense = async (data: Omit<Expense, 'id' | 'date'>) => {
     if(!user) return;
-    const newExpense = { ...data, date: new Date().toISOString() };
-    await addDoc(getCollectionRef('expenses'), newExpense);
-    toast({ title: "Gider Eklendi", description: "Yeni gider kaydı oluşturuldu." });
+    try {
+        const newExpense = { ...data, date: new Date().toISOString() };
+        await addDoc(getCollectionRef('expenses'), newExpense);
+        toast({ title: "Gider Eklendi", description: "Yeni gider kaydı oluşturuldu." });
+    } catch (error) {
+        console.error("Error adding expense: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleUpdateExpense = async (data: Expense) => {
     if(!user) return;
-    const { id, ...expenseData } = data;
-    await updateDoc(doc(db, 'users', user.uid, 'expenses', id), expenseData);
-    toast({ title: "Gider Güncellendi" });
+    try {
+        const { id, ...expenseData } = data;
+        await updateDoc(doc(db, 'users', user.uid, 'expenses', id), expenseData);
+        toast({ title: "Gider Güncellendi" });
+    } catch (error) {
+        console.error("Error updating expense: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleDeleteExpense = async (id: string) => {
     if(!user) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'expenses', id));
-    toast({ title: "Gider Silindi", variant: "destructive" });
+    try {
+        await deleteDoc(doc(db, 'users', user.uid, 'expenses', id));
+        toast({ title: "Gider Silindi", variant: "destructive" });
+    } catch (error) {
+        console.error("Error deleting expense: ", error);
+        showGenericErrorToast();
+    }
   };
 
   // Stock Adjustments
@@ -481,84 +566,131 @@ export default function DashboardPage() {
     const product = products.find(p => p.id === data.productId);
     if (!product) return;
     
-    const newAdjustment = { 
-      ...data,
-      productName: product.name,
-      date: new Date().toISOString(),
-    };
+    try {
+        const newAdjustment = { 
+          ...data,
+          productName: product.name,
+          date: new Date().toISOString(),
+        };
 
-    const batch = writeBatch(db);
-    
-    const adjRef = doc(getCollectionRef('stockAdjustments'));
-    batch.set(adjRef, newAdjustment);
+        const batch = writeBatch(db);
+        
+        const adjRef = doc(getCollectionRef('stockAdjustments'));
+        batch.set(adjRef, newAdjustment);
 
-    const productRef = doc(db, "users", user.uid, "products", product.id);
-    batch.update(productRef, { stock: product.stock + data.quantity });
+        const productRef = doc(db, "users", user.uid, "products", product.id);
+        batch.update(productRef, { stock: product.stock + data.quantity });
 
-    await batch.commit();
-    toast({ title: "Stok Hareketi Eklendi" });
+        await batch.commit();
+        toast({ title: "Stok Hareketi Eklendi" });
+    } catch (error) {
+        console.error("Error adding stock adjustment: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleUpdateStockAdjustment = async (data: StockAdjustment) => {
     if(!user) return;
-    const { id, ...adjData } = data;
-    await updateDoc(doc(db, 'users', user.uid, 'stockAdjustments', id), adjData);
-    toast({ title: "Stok Hareketi Güncellendi" });
+    // Note: Updating a stock adjustment's quantity after creation is complex
+    // as it can break the stock integrity. This is intentionally left simple.
+    try {
+        const { id, ...adjData } = data;
+        await updateDoc(doc(db, 'users', user.uid, 'stockAdjustments', id), adjData);
+        toast({ title: "Stok Hareketi Güncellendi" });
+    } catch (error) {
+        console.error("Error updating stock adjustment: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleDeleteStockAdjustment = async (id: string) => {
     if(!user) return;
-    const adjToDeleteRef = doc(db, 'users', user.uid, 'stockAdjustments', id);
-    const adjToDeleteSnap = await getDoc(adjToDeleteRef);
-    if(!adjToDeleteSnap.exists()) return;
-    
-    const adjToDelete = adjToDeleteSnap.data() as StockAdjustment;
+    try {
+        const adjToDeleteRef = doc(db, 'users', user.uid, 'stockAdjustments', id);
+        const adjToDeleteSnap = await getDoc(adjToDeleteRef);
+        if(!adjToDeleteSnap.exists()) return;
+        
+        const adjToDelete = adjToDeleteSnap.data() as StockAdjustment;
 
-    const batch = writeBatch(db);
-    batch.delete(adjToDeleteRef);
+        const batch = writeBatch(db);
+        batch.delete(adjToDeleteRef);
 
-    const product = products.find(p => p.id === adjToDelete.productId);
-    if(product) {
-        const productRef = doc(db, "users", user.uid, "products", product.id);
-        batch.update(productRef, { stock: product.stock - adjToDelete.quantity });
+        const product = products.find(p => p.id === adjToDelete.productId);
+        if(product) {
+            const productRef = doc(db, "users", user.uid, "products", product.id);
+            batch.update(productRef, { stock: product.stock - adjToDelete.quantity });
+        }
+
+        await batch.commit();
+        toast({ title: "Stok Hareketi Silindi", variant: "destructive" });
+    } catch (error) {
+        console.error("Error deleting stock adjustment: ", error);
+        showGenericErrorToast();
     }
-
-    await batch.commit();
-    toast({ title: "Stok Hareketi Silindi", variant: "destructive" });
   };
   
   // Suppliers
   const handleAddSupplier = async (data: Omit<Supplier, 'id'>) => {
     if(!user) return;
-    await addDoc(getCollectionRef('suppliers'), data);
-    toast({ title: "Tedarikçi Eklendi", description: `${data.name} başarıyla eklendi.` });
+    try {
+        await addDoc(getCollectionRef('suppliers'), data);
+        toast({ title: "Tedarikçi Eklendi", description: `${data.name} başarıyla eklendi.` });
+    } catch (error) {
+        console.error("Error adding supplier: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleUpdateSupplier = async (data: Supplier) => {
     if(!user) return;
-    const { id, ...supplierData } = data;
-    await updateDoc(doc(db, 'users', user.uid, 'suppliers', id), supplierData);
-    toast({ title: "Tedarikçi Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+    try {
+        const { id, ...supplierData } = data;
+        await updateDoc(doc(db, 'users', user.uid, 'suppliers', id), supplierData);
+        toast({ title: "Tedarikçi Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+    } catch (error) {
+        console.error("Error updating supplier: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleDeleteSupplier = async (id: string) => {
     if(!user) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'suppliers', id));
-    toast({ title: "Tedarikçi Silindi", variant: "destructive" });
+    try {
+        await deleteDoc(doc(db, 'users', user.uid, 'suppliers', id));
+        toast({ title: "Tedarikçi Silindi", variant: "destructive" });
+    } catch (error) {
+        console.error("Error deleting supplier: ", error);
+        showGenericErrorToast();
+    }
   };
 
   // Staff
   const handleAddStaff = async (data: Omit<StaffType, 'id'>) => {
     if(!user) return;
-    await addDoc(getCollectionRef('staff'), data);
-    toast({ title: "Personel Eklendi", description: `${data.name} başarıyla eklendi.` });
+    try {
+        await addDoc(getCollectionRef('staff'), data);
+        toast({ title: "Personel Eklendi", description: `${data.name} başarıyla eklendi.` });
+    } catch (error) {
+        console.error("Error adding staff: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleUpdateStaff = async (data: StaffType) => {
     if(!user) return;
-    const { id, ...staffData } = data;
-    await updateDoc(doc(db, 'users', user.uid, 'staff', id), staffData);
-    toast({ title: "Personel Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+    try {
+        const { id, ...staffData } = data;
+        await updateDoc(doc(db, 'users', user.uid, 'staff', id), staffData);
+        toast({ title: "Personel Güncellendi", description: `${data.name} bilgileri güncellendi.` });
+    } catch (error) {
+        console.error("Error updating staff: ", error);
+        showGenericErrorToast();
+    }
   };
   const handleDeleteStaff = async (id: string) => {
     if(!user) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'staff', id));
-    toast({ title: "Personel Silindi", variant: "destructive" });
+    try {
+        await deleteDoc(doc(db, 'users', user.uid, 'staff', id));
+        toast({ title: "Personel Silindi", variant: "destructive" });
+    } catch (error) {
+        console.error("Error deleting staff: ", error);
+        showGenericErrorToast();
+    }
   };
 
   // Cashbox Logic
@@ -581,38 +713,48 @@ export default function DashboardPage() {
 
   const handleDayClose = async (data: { countedCash: number; countedVisa: number }) => {
     if(!user) return;
-    const cashDifference = data.countedCash - expectedCash;
-    const newEntry = {
-        date: new Date().toISOString(),
-        openingCash,
-        cashIn: cashInToday,
-        visaIn: visaInToday,
-        cashOut: cashOutToday,
-        expectedCash,
-        countedCash: data.countedCash,
-        countedVisa: data.countedVisa,
-        cashDifference,
-    };
-    await addDoc(getCollectionRef('cashboxHistory'), newEntry);
-    toast({
-      title: "Gün Kapatıldı",
-      description: `Kasa sayımı tamamlandı. Nakit Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(cashDifference)}`,
-    });
+    try {
+        const cashDifference = data.countedCash - expectedCash;
+        const newEntry = {
+            date: new Date().toISOString(),
+            openingCash,
+            cashIn: cashInToday,
+            visaIn: visaInToday,
+            cashOut: cashOutToday,
+            expectedCash,
+            countedCash: data.countedCash,
+            countedVisa: data.countedVisa,
+            cashDifference,
+        };
+        await addDoc(getCollectionRef('cashboxHistory'), newEntry);
+        toast({
+          title: "Gün Kapatıldı",
+          description: `Kasa sayımı tamamlandı. Nakit Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(cashDifference)}`,
+        });
+    } catch (error) {
+        console.error("Error closing day: ", error);
+        showGenericErrorToast();
+    }
   };
 
   const handleUpdateCashboxHistory = async (data: CashboxHistory) => {
     if (!user) return;
-    const { id, ...historyData } = data;
-    
-    // Recalculate difference based on potentially updated counted cash
-    const cashDifference = (historyData.countedCash ?? 0) - (historyData.expectedCash ?? 0);
-    const updatedData = { ...historyData, cashDifference };
+    try {
+        const { id, ...historyData } = data;
+        
+        // Recalculate difference based on potentially updated counted cash
+        const cashDifference = (historyData.countedCash ?? 0) - (historyData.expectedCash ?? 0);
+        const updatedData = { ...historyData, cashDifference };
 
-    await updateDoc(doc(db, "users", user.uid, "cashboxHistory", id), updatedData);
-    toast({
-      title: "Kasa Kaydı Güncellendi",
-      description: `${new Date(data.date).toLocaleDateString('tr-TR')} tarihli kasa kaydı güncellendi.`,
-    });
+        await updateDoc(doc(db, "users", user.uid, "cashboxHistory", id), updatedData);
+        toast({
+          title: "Kasa Kaydı Güncellendi",
+          description: `${new Date(data.date).toLocaleDateString('tr-TR')} tarihli kasa kaydı güncellendi.`,
+        });
+    } catch (error) {
+        console.error("Error updating cashbox history: ", error);
+        showGenericErrorToast();
+    }
   };
   
   const creditSales = orders.filter(o => o.customerId !== 'CASH_SALE');

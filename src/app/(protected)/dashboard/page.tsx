@@ -48,6 +48,7 @@ import Campaigns from '@/components/campaigns';
 
 import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert, Supplier, Staff as StaffType, Sale } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type View = 
   'anasayfa' | 
@@ -90,6 +91,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { setOpenMobile } = useSidebar();
+  const isMobile = useIsMobile();
   
   const [activeView, setActiveView] = useState<View>('anasayfa');
   const [loadingData, setLoadingData] = useState(true);
@@ -109,20 +111,21 @@ export default function DashboardPage() {
     const monthNames = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
     const monthlyData: { month: string; revenue: number }[] = [];
     const today = new Date();
+    const monthsToShow = isMobile ? 4 : 6;
 
-    // Initialize the last 6 months in order
-    for (let i = 5; i >= 0; i--) {
+    // Initialize the last months in order
+    for (let i = monthsToShow - 1; i >= 0; i--) {
         const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
         monthlyData.push({ month: monthNames[d.getMonth()], revenue: 0 });
     }
 
-    const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1);
-    sixMonthsAgo.setHours(0, 0, 0, 0);
+    const startDate = new Date(today.getFullYear(), today.getMonth() - (monthsToShow - 1), 1);
+    startDate.setHours(0, 0, 0, 0);
 
     orders.forEach(order => {
         if (order.status === 'Tamamlandı' && order.total > 0) {
             const orderDate = new Date(order.date);
-            if (orderDate >= sixMonthsAgo) {
+            if (orderDate >= startDate) {
                 const monthName = monthNames[orderDate.getMonth()];
                 const monthEntry = monthlyData.find(m => m.month === monthName);
                 if (monthEntry) {
@@ -133,7 +136,7 @@ export default function DashboardPage() {
     });
 
     return monthlyData;
-  }, [orders]);
+  }, [orders, isMobile]);
 
 
   // --- Firestore Data Fetching ---
@@ -559,7 +562,7 @@ export default function DashboardPage() {
 
     switch (activeView) {
       case 'anasayfa':
-        return <Dashboard customers={customers} expenses={expenses} salesData={salesData} />;
+        return <Dashboard customers={customers} expenses={expenses} salesData={salesData} isMobile={isMobile} />;
       case 'urun-yonetimi':
         return <Inventory 
                   products={products} 
@@ -630,7 +633,7 @@ export default function DashboardPage() {
       case 'yapay-zeka':
         return <AiChat />;
       default:
-        return <Dashboard customers={customers} expenses={expenses} salesData={salesData} />;
+        return <Dashboard customers={customers} expenses={expenses} salesData={salesData} isMobile={isMobile} />;
     }
   };
 

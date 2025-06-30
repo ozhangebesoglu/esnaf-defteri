@@ -10,6 +10,7 @@ interface DashboardProps {
     customers: Customer[];
     expenses: Expense[];
     salesData: Sale[];
+    isMobile?: boolean;
 }
 
 const barChartConfig = {
@@ -27,7 +28,7 @@ const pieChartColors = [
   "hsl(var(--chart-5))",
 ]
 
-export default function Dashboard({ customers, expenses, salesData }: DashboardProps) {
+export default function Dashboard({ customers, expenses, salesData, isMobile }: DashboardProps) {
   const totalReceivables = customers.filter(c => c.balance > 0).reduce((acc, c) => acc + c.balance, 0);
   const totalDebts = customers.filter(c => c.balance < 0).reduce((acc, c) => acc + c.balance, 0);
   const receivablesCount = customers.filter(c => c.balance > 0).length;
@@ -56,11 +57,11 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2 md:p-6 md:pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Ciro (Son 6 Ay)</CardTitle>
+            <CardTitle className="text-sm font-medium">Toplam Ciro (Son {isMobile ? 4 : 6} Ay)</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-            <div className="text-xl font-bold sm:text-2xl">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalRevenue)}</div>
+            <div className="text-lg font-bold sm:text-xl lg:text-2xl">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalRevenue)}</div>
             <p className="text-xs text-muted-foreground">Grafikteki verilere göre</p>
           </CardContent>
         </Card>
@@ -70,7 +71,7 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-            <div className="text-xl font-bold text-destructive sm:text-2xl">
+            <div className="text-lg font-bold text-destructive sm:text-xl lg:text-2xl">
               {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalReceivables)}
             </div>
             <p className="text-xs text-muted-foreground">{receivablesCount} müşteriden</p>
@@ -82,7 +83,7 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-            <div className="text-xl font-bold text-green-600 sm:text-2xl">
+            <div className="text-lg font-bold text-green-600 sm:text-xl lg:text-2xl">
              {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Math.abs(totalDebts))}
             </div>
             <p className="text-xs text-muted-foreground">{debtsCount} müşteriye</p>
@@ -94,7 +95,7 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-            <div className="text-xl font-bold sm:text-2xl">{customers.length}</div>
+            <div className="text-lg font-bold sm:text-xl lg:text-2xl">{customers.length}</div>
             <p className="text-xs text-muted-foreground">toplam kayıtlı müşteri</p>
           </CardContent>
         </Card>
@@ -104,10 +105,10 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
         <Card>
           <CardHeader>
             <CardTitle>Satış Özeti</CardTitle>
-            <CardDescription>Son 6 aydaki cironun grafiği.</CardDescription>
+            <CardDescription>Son {isMobile ? '4' : '6'} aydaki cironun grafiği.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={barChartConfig} className="h-64">
+            <ChartContainer config={barChartConfig} className="h-56 md:h-64">
               <BarChart accessibilityLayer data={salesData}>
                 <CartesianGrid vertical={false} />
                 <XAxis
@@ -131,7 +132,7 @@ export default function Dashboard({ customers, expenses, salesData }: DashboardP
             <CardDescription>Harcamaların kategorilere göre dağılımı.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={pieChartConfig} className="h-64">
+            <ChartContainer config={pieChartConfig} className="h-56 md:h-64">
                 <PieChart>
                     <ChartTooltip content={<ChartTooltipContent nameKey="value" hideLabel />} />
                     <Pie data={expenseChartData} dataKey="value" nameKey="name" innerRadius={50}>

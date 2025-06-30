@@ -1,4 +1,5 @@
 
+
 export type FirestoreDoc = {
     id: string;
     userId: string;
@@ -59,11 +60,13 @@ export type Expense = FirestoreDoc & {
 
 export type CashboxHistory = FirestoreDoc & {
   date: string;
-  opening: number;
+  openingCash: number;
   cashIn: number;
   cashOut: number;
-  closing: number;
-  difference: number;
+  expectedCash: number;
+  countedCash: number;
+  cashDifference: number;
+  countedVisa: number;
 };
 
 export type Supplier = FirestoreDoc & {

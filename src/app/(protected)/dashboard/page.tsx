@@ -527,27 +527,29 @@ export default function DashboardPage() {
   };
 
   // Cashbox Logic
-  const openingBalance = cashboxHistory[0]?.closing || 0;
+  const openingCash = cashboxHistory[0]?.countedCash || 0;
   const cashInToday = orders.filter(o => (o.customerId === 'CASH_SALE' || o.total < 0) && isToday(o.date)).reduce((sum, o) => sum + Math.abs(o.total), 0);
   const cashOutToday = expenses.filter(e => isToday(e.date)).reduce((sum, e) => sum + e.amount, 0);
-  const expectedBalance = openingBalance + cashInToday - cashOutToday;
+  const expectedCash = openingCash + cashInToday - cashOutToday;
 
-  const handleDayClose = async (actualBalance: number) => {
+  const handleDayClose = async (data: { countedCash: number; countedVisa: number }) => {
     if(!user) return;
-    const difference = actualBalance - expectedBalance;
-    const newEntry = {
-        userId: user.uid,
+    const cashDifference = data.countedCash - expectedCash;
+    const newEntry: Omit<CashboxHistory, 'id' | 'userId'> = {
         date: new Date().toISOString(),
-        opening: openingBalance,
+        userId: user.uid,
+        openingCash,
         cashIn: cashInToday,
         cashOut: cashOutToday,
-        closing: actualBalance,
-        difference: difference
+        expectedCash,
+        countedCash: data.countedCash,
+        countedVisa: data.countedVisa,
+        cashDifference,
     };
     await addDoc(getCollectionRef('cashboxHistory'), newEntry);
     toast({
       title: "Gün Kapatıldı",
-      description: `Kasa sayımı tamamlandı. Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(difference)}`,
+      description: `Kasa sayımı tamamlandı. Nakit Fark: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(cashDifference)}`,
     });
   };
   
@@ -622,10 +624,10 @@ export default function DashboardPage() {
       case 'kasa':
         return <Cashbox 
                   history={cashboxHistory}
-                  openingBalance={openingBalance}
+                  openingCash={openingCash}
                   cashIn={cashInToday}
                   cashOut={cashOutToday}
-                  expectedBalance={expectedBalance}
+                  expectedCash={expectedCash}
                   onDayClose={handleDayClose}
                />;
       case 'uyarilar':

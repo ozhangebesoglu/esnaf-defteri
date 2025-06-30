@@ -3,57 +3,41 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if the requesting user is the owner of the document.
-    function isOwner(docUserId) {
-      return request.auth != null && request.auth.uid == docUserId;
+  
+    // Helper function to check ownership based on the userId field
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
-    // Rules for collections where document ID is random
-    // and ownership is determined by a 'userId' field.
+    // Secure all collections by checking the userId field in the document
     match /customers/{docId} {
-      allow read, update, delete: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow read, write: if isOwner(resource.data.userId);
     }
-    
     match /products/{docId} {
-      allow read, update, delete: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow read, write: if isOwner(resource.data.userId);
     }
-    
     match /orders/{docId} {
-      allow read, update, delete: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow read, write: if isOwner(resource.data.userId);
     }
-    
     match /expenses/{docId} {
-      allow read, update, delete: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow read, write: if isOwner(resource.data.userId);
     }
-    
     match /stockAdjustments/{docId} {
-      allow read, update, delete: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow read, write: if isOwner(resource.data.userId);
     }
-    
     match /cashboxHistory/{docId} {
-      allow read, update, delete: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow read, write: if isOwner(resource.data.userId);
     }
-    
     match /suppliers/{docId} {
-      allow read, update, delete: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow read, write: if isOwner(resource.data.userId);
+    }
+    match /staff/{docId} {
+      allow read, write: if isOwner(resource.data.userId);
     }
     
-    match /staff/{docId} {
-      allow read, update, delete: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
-    }
-
-    // Special rule for chatHistories where the document ID is the user's UID.
+    // For chatHistories, the document ID is the userId
     match /chatHistories/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if request.auth.uid == userId;
     }
   }
 }

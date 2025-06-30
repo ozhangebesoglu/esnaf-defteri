@@ -31,7 +31,7 @@ interface CustomersProps {
     onAddCustomer: (data: { name: string, email?: string, initialDebt?: number }) => void;
     onUpdateCustomer: (data: Customer) => void;
     onDeleteCustomer: (id: string) => void;
-    onAddPayment: (data: { customerId: string, total: number, description?: string }) => void;
+    onAddPayment: (data: { customerId: string; total: number; description?: string; paymentMethod: 'cash' | 'visa' }) => void;
     onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'|'userId'>) => void;
 }
 

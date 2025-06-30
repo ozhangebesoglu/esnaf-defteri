@@ -325,7 +325,7 @@ export default function DashboardPage() {
   };
 
   // Sales (Orders)
-  const handleAddSale = async (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items' | 'userId'>) => {
+  const handleAddSale = async (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items' | 'userId' | 'paymentMethod'>) => {
     if(!user) return;
     const customer = customers.find(c => c.id === data.customerId);
     if (!customer) return;
@@ -351,7 +351,7 @@ export default function DashboardPage() {
     toast({ title: "Satış Eklendi", description: "Yeni satış kaydı oluşturuldu." });
   };
 
-   const handleAddPayment = async (data: { customerId: string, total: number, description?: string }) => {
+   const handleAddPayment = async (data: { customerId: string, total: number, description?: string, paymentMethod: 'cash' | 'visa' }) => {
     if(!user) return;
     const customer = customers.find(c => c.id === data.customerId);
     if (!customer) return;
@@ -360,11 +360,12 @@ export default function DashboardPage() {
       userId: user.uid,
       customerId: data.customerId,
       customerName: customer.name,
-      description: data.description || 'Nakit Ödeme',
+      description: data.description || `${data.paymentMethod === 'cash' ? 'Nakit' : 'Visa'} Ödeme`,
       items: 1,
       total: -data.total,
       status: 'Tamamlandı' as const,
       date: new Date().toISOString(),
+      paymentMethod: data.paymentMethod,
     };
     
     const batch = writeBatch(db);
@@ -409,7 +410,7 @@ export default function DashboardPage() {
   };
 
   // Cash Sales
-  const handleAddCashSale = async (data: { description: string, total: number }) => {
+  const handleAddCashSale = async (data: { description: string, total: number, paymentMethod: 'cash' | 'visa' }) => {
     if(!user) return;
     const newOrder = {
       userId: user.uid,
@@ -420,6 +421,7 @@ export default function DashboardPage() {
       items: data.description.split(',').length,
       description: data.description,
       total: data.total,
+      paymentMethod: data.paymentMethod,
     };
     
     await addDoc(getCollectionRef('orders'), newOrder);
@@ -528,18 +530,31 @@ export default function DashboardPage() {
 
   // Cashbox Logic
   const openingCash = cashboxHistory[0]?.countedCash || 0;
-  const cashInToday = orders.filter(o => (o.customerId === 'CASH_SALE' || o.total < 0) && isToday(o.date)).reduce((sum, o) => sum + Math.abs(o.total), 0);
+
+  const todaysTransactions = orders.filter(o => isToday(o.date));
+
+  const cashInToday = todaysTransactions
+    .filter(o => o.paymentMethod === 'cash')
+    .reduce((sum, o) => sum + Math.abs(o.total), 0);
+  
+  const visaInToday = todaysTransactions
+    .filter(o => o.paymentMethod === 'visa')
+    .reduce((sum, o) => sum + Math.abs(o.total), 0);
+
+  const totalInToday = cashInToday + visaInToday;
+
   const cashOutToday = expenses.filter(e => isToday(e.date)).reduce((sum, e) => sum + e.amount, 0);
   const expectedCash = openingCash + cashInToday - cashOutToday;
 
   const handleDayClose = async (data: { countedCash: number; countedVisa: number }) => {
     if(!user) return;
     const cashDifference = data.countedCash - expectedCash;
-    const newEntry: Omit<CashboxHistory, 'id' | 'userId'> = {
+    const newEntry: Omit<CashboxHistory, 'id'|'userId'> = {
         date: new Date().toISOString(),
         userId: user.uid,
         openingCash,
         cashIn: cashInToday,
+        visaIn: visaInToday,
         cashOut: cashOutToday,
         expectedCash,
         countedCash: data.countedCash,
@@ -626,6 +641,8 @@ export default function DashboardPage() {
                   history={cashboxHistory}
                   openingCash={openingCash}
                   cashIn={cashInToday}
+                  visaIn={visaInToday}
+                  totalIn={totalInToday}
                   cashOut={cashOutToday}
                   expectedCash={expectedCash}
                   onDayClose={handleDayClose}

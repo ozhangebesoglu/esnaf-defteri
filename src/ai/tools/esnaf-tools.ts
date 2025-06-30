@@ -89,15 +89,16 @@ export const addSaleTool = ai.defineTool(
 export const addCashSaleTool = ai.defineTool(
   {
     name: 'addCashSale',
-    description: 'Müşteriye bağlı olmayan, tezgahtan yapılan peşin satışları ekler. Örneğin: "Tezgahtan 200 liralık peşin satış yaptım." Bu işlem müşteri borçlarını etkilemez.',
+    description: 'Müşteriye bağlı olmayan, tezgahtan yapılan peşin satışları ekler. Örneğin: "Tezgahtan 200 liralık nakit satış yaptım." Ödeme yöntemi (nakit veya visa) belirtilmelidir. Bu işlem müşteri borçlarını etkilemez.',
     inputSchema: z.object({
       description: z.string().describe('Satılan ürünlerin veya hizmetin açıklaması.'),
       total: z.number().describe('Satışın toplam tutarı (Türk Lirası).'),
+      paymentMethod: z.enum(['cash', 'visa']).describe("Ödeme yöntemi, 'cash' (nakit) veya 'visa' (kredi kartı/POS)."),
       userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
-  async ({ description, total, userId }) => {
+  async ({ description, total, userId, paymentMethod }) => {
      await addDoc(collection(db, 'orders'), {
       userId,
       customerId: 'CASH_SALE',
@@ -107,8 +108,9 @@ export const addCashSaleTool = ai.defineTool(
       items: description.split(',').length,
       description,
       total,
+      paymentMethod,
     });
-    return `${total} TL tutarında peşin satış başarıyla eklendi.`;
+    return `${total} TL tutarında peşin satış (${paymentMethod === 'cash' ? 'Nakit' : 'Visa'}) başarıyla eklendi.`;
   }
 );
 
@@ -116,7 +118,7 @@ export const addPaymentTool = ai.defineTool(
   {
     name: 'addPayment',
     description:
-      'Bir müşteriden gelen ödemeyi kaydeder. Örneğin: "Ayşe Kaya\'dan 100 lira ödeme aldım." Bu işlem müşterinin borcunu azaltır.',
+      'Bir müşteriden gelen ödemeyi kaydeder. Örneğin: "Ayşe Kaya\'dan 100 lira nakit ödeme aldım." Ödeme yöntemi (nakit veya visa) belirtilmelidir. Bu işlem müşterinin borcunu azaltır.',
     inputSchema: z.object({
       customerName: z
         .string()
@@ -126,11 +128,12 @@ export const addPaymentTool = ai.defineTool(
         .describe("Ödeme için bir açıklama, örn. 'Nakit Ödeme', 'Elden ödeme'.")
         .optional(),
       total: z.number().describe('Ödenen toplam tutar (Türk Lirası).'),
+      paymentMethod: z.enum(['cash', 'visa']).describe("Ödeme yöntemi, 'cash' (nakit) veya 'visa' (kredi kartı/POS)."),
       userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
-  async ({ customerName, description, total, userId }) => {
+  async ({ customerName, description, total, userId, paymentMethod }) => {
     const customer = await findResourceByName<Customer>('customers', customerName, userId);
     if (!customer) {
       return `"${customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin.`;
@@ -142,18 +145,19 @@ export const addPaymentTool = ai.defineTool(
       userId,
       customerId: customer.id,
       customerName: customer.name,
-      description: description || 'Nakit Ödeme',
+      description: description || (paymentMethod === 'cash' ? 'Nakit Ödeme' : 'Visa Ödeme'),
       items: 1,
       total: -total, // Payments are negative
       status: 'Tamamlandı',
       date: new Date().toISOString(),
+      paymentMethod,
     });
 
     const customerRef = doc(db, "customers", customer.id);
     batch.update(customerRef, { balance: customer.balance - total });
 
     await batch.commit();
-    return `${customer.name} adlı müşteriden ${total} TL ödeme başarıyla alındı.`;
+    return `${customer.name} adlı müşteriden ${total} TL ödeme (${paymentMethod === 'cash' ? 'Nakit' : 'Visa'}) başarıyla alındı.`;
   }
 );
 

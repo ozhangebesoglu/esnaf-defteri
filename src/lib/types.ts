@@ -13,6 +13,7 @@ export type Order = FirestoreDoc & {
   total: number;
   status: 'Tamamlandı' | 'Bekliyor' | 'İptal Edildi';
   date: string;
+  paymentMethod?: 'cash' | 'visa';
 };
 
 export type Sale = {
@@ -62,6 +63,7 @@ export type CashboxHistory = FirestoreDoc & {
   date: string;
   openingCash: number;
   cashIn: number;
+  visaIn: number;
   cashOut: number;
   expectedCash: number;
   countedCash: number;

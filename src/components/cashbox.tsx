@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Wallet, TrendingUp, TrendingDown, Landmark } from "lucide-react"
+import { Wallet, TrendingUp, TrendingDown, Landmark, CreditCard, Coins } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -77,12 +77,14 @@ interface CashboxProps {
     history: CashboxHistory[];
     openingCash: number;
     cashIn: number;
+    visaIn: number;
+    totalIn: number;
     cashOut: number;
     expectedCash: number;
     onDayClose: (data: { countedCash: number; countedVisa: number }) => void;
 }
 
-export default function Cashbox({ history, openingCash, cashIn, cashOut, expectedCash, onDayClose }: CashboxProps) {
+export default function Cashbox({ history, openingCash, cashIn, visaIn, totalIn, cashOut, expectedCash, onDayClose }: CashboxProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
 
@@ -101,6 +103,7 @@ export default function Cashbox({ history, openingCash, cashIn, cashOut, expecte
             <TableHead>Tarih</TableHead>
             <TableHead className="text-right">Devreden Nakit</TableHead>
             <TableHead className="text-right">Nakit Girişi</TableHead>
+            <TableHead className="text-right">Visa Girişi</TableHead>
             <TableHead className="text-right">Nakit Çıkışı</TableHead>
             <TableHead className="text-right">Kapanış Nakit</TableHead>
             <TableHead className="text-right">Kapanış Visa</TableHead>
@@ -113,6 +116,7 @@ export default function Cashbox({ history, openingCash, cashIn, cashOut, expecte
               <TableCell className="font-medium">{new Date(entry.date).toLocaleDateString('tr-TR')}</TableCell>
               <TableCell className="text-right font-mono">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.openingCash)}</TableCell>
               <TableCell className="text-right font-mono text-green-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.cashIn)}</TableCell>
+              <TableCell className="text-right font-mono text-blue-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.visaIn)}</TableCell>
               <TableCell className="text-right font-mono text-destructive">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.cashOut)}</TableCell>
               <TableCell className="text-right font-mono">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.countedCash)}</TableCell>
               <TableCell className="text-right font-mono">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.countedVisa)}</TableCell>
@@ -122,7 +126,7 @@ export default function Cashbox({ history, openingCash, cashIn, cashOut, expecte
             </TableRow>
           )) : (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">Geçmiş kasa kaydı bulunamadı.</TableCell>
+              <TableCell colSpan={8} className="h-24 text-center">Geçmiş kasa kaydı bulunamadı.</TableCell>
             </TableRow>
           )}
         </TableBody>
@@ -145,18 +149,19 @@ export default function Cashbox({ history, openingCash, cashIn, cashOut, expecte
                 </CardHeader>
                 <CardContent className="p-4 pt-0 space-y-3">
                     <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">Nakit Detayları</p>
+                        <p className="text-sm font-medium text-muted-foreground">İşlem Detayları</p>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                            <span>Açılış:</span><span className="text-right font-mono">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.openingCash)}</span>
-                            <span>Giriş:</span><span className="text-right font-mono text-green-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.cashIn)}</span>
-                            <span>Çıkış:</span><span className="text-right font-mono text-destructive">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.cashOut)}</span>
-                            <span className="font-semibold">Kapanış:</span><span className="text-right font-mono font-semibold">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.countedCash)}</span>
+                            <span>Açılış Nakit:</span><span className="text-right font-mono">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.openingCash)}</span>
+                            <span>Nakit Giriş:</span><span className="text-right font-mono text-green-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.cashIn)}</span>
+                            <span>Visa Giriş:</span><span className="text-right font-mono text-blue-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.visaIn)}</span>
+                            <span>Nakit Çıkış:</span><span className="text-right font-mono text-destructive">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.cashOut)}</span>
                         </div>
                     </div>
                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">Visa Detayları</p>
+                        <p className="text-sm font-medium text-muted-foreground">Kapanış Detayları</p>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                            <span className="font-semibold">Kapanış:</span><span className="text-right font-mono font-semibold">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.countedVisa)}</span>
+                            <span className="font-semibold">Kapanış Nakit:</span><span className="text-right font-mono font-semibold">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.countedCash)}</span>
+                            <span className="font-semibold">Kapanış Visa:</span><span className="text-right font-mono font-semibold">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(entry.countedVisa)}</span>
                         </div>
                     </div>
                 </CardContent>
@@ -174,8 +179,8 @@ export default function Cashbox({ history, openingCash, cashIn, cashOut, expecte
        <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>Günlük Kasa Yönetimi</CardTitle>
-                <CardDescription>Mevcut gün için nakit hareketleri özeti ve gün sonu işlemi.</CardDescription>
+                <CardTitle>Günlük Kasa Özeti</CardTitle>
+                <CardDescription>Nakit, Visa ve gider hareketleri özeti.</CardDescription>
             </div>
             <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -208,12 +213,17 @@ export default function Cashbox({ history, openingCash, cashIn, cashOut, expecte
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Nakit Girişi</CardTitle>
+                    <CardTitle className="text-sm font-medium">Toplam Günlük Ciro</CardTitle>
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold text-green-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(cashIn)}</div>
-                    <p className="text-xs text-muted-foreground">Bugünkü nakit satışlar ve tahsilatlar</p>
+                    <div className="text-2xl font-bold">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalIn)}</div>
+                    <p className="text-xs text-muted-foreground">
+                        Nakit: {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(cashIn)}
+                    </p>
+                     <p className="text-xs text-muted-foreground">
+                        Visa: {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(visaIn)}
+                    </p>
                 </CardContent>
             </Card>
             <Card>
@@ -233,7 +243,7 @@ export default function Cashbox({ history, openingCash, cashIn, cashOut, expecte
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(expectedCash)}</div>
-                    <p className="text-xs text-muted-foreground">Sistemdeki güncel bakiye</p>
+                    <p className="text-xs text-muted-foreground">Sistemdeki güncel nakit bakiye</p>
                 </CardContent>
             </Card>
         </CardContent>

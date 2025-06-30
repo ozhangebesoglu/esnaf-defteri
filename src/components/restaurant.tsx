@@ -27,11 +27,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from "@/components/ui/skeleton"
 import { useIsMobile } from "@/hooks/use-mobile"
 import type { Order } from "@/lib/types"
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group"
 
 
 const cashSaleSchema = z.object({
   description: z.string().min(3, "Açıklama en az 3 karakter olmalıdır."),
   total: z.coerce.number().positive("Tutar pozitif bir sayı olmalıdır."),
+  paymentMethod: z.enum(['cash', 'visa'], { required_error: "Lütfen ödeme yöntemini seçin." }),
 });
 
 function CashSaleForm({ setOpen, onSave }: { setOpen: (open: boolean) => void, onSave: (data: z.infer<typeof cashSaleSchema>) => void }) {
@@ -40,6 +42,7 @@ function CashSaleForm({ setOpen, onSave }: { setOpen: (open: boolean) => void, o
     defaultValues: {
       description: "",
       total: '' as any,
+      paymentMethod: 'cash',
     },
   });
 
@@ -78,6 +81,28 @@ function CashSaleForm({ setOpen, onSave }: { setOpen: (open: boolean) => void, o
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="paymentMethod"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Ödeme Yöntemi</FormLabel>
+              <FormControl>
+                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4">
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl><RadioGroupItem value="cash" /></FormControl>
+                    <FormLabel className="font-normal">Nakit</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl><RadioGroupItem value="visa" /></FormControl>
+                    <FormLabel className="font-normal">Visa/POS</FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <DialogFooter>
           <Button type="submit">Peşin Satışı Kaydet</Button>
         </DialogFooter>
@@ -88,7 +113,7 @@ function CashSaleForm({ setOpen, onSave }: { setOpen: (open: boolean) => void, o
 
 interface RestaurantProps {
     cashSales: Order[];
-    onAddCashSale: (data: { description: string, total: number }) => void;
+    onAddCashSale: (data: { description: string, total: number, paymentMethod: 'cash' | 'visa' }) => void;
     onDeleteSale: (id: string) => void;
 }
 
@@ -119,6 +144,7 @@ export default function Restaurant({ cashSales, onAddCashSale, onDeleteSale }: R
           <TableHead>İşlem No</TableHead>
           <TableHead>Tarih</TableHead>
           <TableHead>Açıklama</TableHead>
+          <TableHead className="text-right">Ödeme Tipi</TableHead>
           <TableHead className="text-right">Tutar</TableHead>
           <TableHead className="w-[100px] text-right">İşlemler</TableHead>
         </TableRow>
@@ -129,6 +155,7 @@ export default function Restaurant({ cashSales, onAddCashSale, onDeleteSale }: R
             <TableCell className="font-medium">{sale.id}</TableCell>
             <TableCell>{new Date(sale.date).toLocaleString('tr-TR')}</TableCell>
             <TableCell>{sale.description}</TableCell>
+            <TableCell className="text-right capitalize">{sale.paymentMethod}</TableCell>
             <TableCell className="text-right font-mono">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(sale.total)}</TableCell>
             <TableCell className="text-right space-x-1">
               <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setSaleToDelete(sale)}>
@@ -138,7 +165,7 @@ export default function Restaurant({ cashSales, onAddCashSale, onDeleteSale }: R
           </TableRow>
         )) : (
           <TableRow>
-            <TableCell colSpan={5} className="h-24 text-center">Bugün peşin satış yapılmadı.</TableCell>
+            <TableCell colSpan={6} className="h-24 text-center">Bugün peşin satış yapılmadı.</TableCell>
           </TableRow>
         )}
       </TableBody>
@@ -152,6 +179,7 @@ export default function Restaurant({ cashSales, onAddCashSale, onDeleteSale }: R
                 <CardContent className="p-4 flex justify-between items-start">
                     <div className="flex-1 space-y-1 pr-2">
                         <p className="font-semibold">{sale.description}</p>
+                        <p className="text-sm capitalize text-muted-foreground">Ödeme: {sale.paymentMethod}</p>
                         <p className="text-xs text-muted-foreground pt-1">{new Date(sale.date).toLocaleString('tr-TR', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">

@@ -9,12 +9,14 @@ import { DialogFooter } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import type { Customer } from "@/lib/types"
 
 export const paymentSchema = z.object({
   customerId: z.string(),
   total: z.coerce.number().positive("Tutar pozitif bir sayı olmalıdır."),
   description: z.string().optional(),
+  paymentMethod: z.enum(['cash', 'visa'], { required_error: "Lütfen bir ödeme yöntemi seçin." }),
 })
 
 interface PaymentFormProps {
@@ -28,8 +30,9 @@ export function PaymentForm({ customer, setOpen, onSave }: PaymentFormProps) {
     resolver: zodResolver(paymentSchema),
     defaultValues: {
         customerId: customer.id,
-        description: "Nakit Ödeme",
+        description: "",
         total: customer.balance > 0 ? customer.balance : ('' as any),
+        paymentMethod: 'cash',
     },
   })
 
@@ -62,6 +65,28 @@ export function PaymentForm({ customer, setOpen, onSave }: PaymentFormProps) {
               <FormLabel>Açıklama (İsteğe Bağlı)</FormLabel>
               <FormControl>
                 <Textarea placeholder="örn., 'Elden nakit alındı'" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="paymentMethod"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Ödeme Yöntemi</FormLabel>
+              <FormControl>
+                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4">
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl><RadioGroupItem value="cash" /></FormControl>
+                    <FormLabel className="font-normal">Nakit</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl><RadioGroupItem value="visa" /></FormControl>
+                    <FormLabel className="font-normal">Visa/POS</FormLabel>
+                  </FormItem>
+                </RadioGroup>
               </FormControl>
               <FormMessage />
             </FormItem>

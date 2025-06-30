@@ -9,7 +9,7 @@ interface SalesTransactionsProps {
   creditSales: Order[];
   cashSales: Order[];
   customers: Customer[];
-  onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'>) => void;
+  onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'|'userId'>) => void;
   onUpdateSale: (data: Order) => void;
   onDeleteSale: (id: string) => void;
   onAddCashSale: (data: { description: string, total: number }) => void;

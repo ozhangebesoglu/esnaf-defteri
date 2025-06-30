@@ -25,7 +25,7 @@ import { SupplierForm } from "./supplier-form"
 
 interface SuppliersProps {
     suppliers: Supplier[];
-    onAddSupplier: (data: Omit<Supplier, 'id'|'userId'>) => void;
+    onAddSupplier: (data: Omit<Supplier, 'id'>) => void;
     onUpdateSupplier: (data: Supplier) => void;
     onDeleteSupplier: (id: string) => void;
 }

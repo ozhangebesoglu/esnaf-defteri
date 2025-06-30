@@ -18,7 +18,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 
 interface ProductsProps {
     products: Product[];
-    onAddProduct: (data: Omit<Product, 'id' | 'stock' | 'userId'>) => void;
+    onAddProduct: (data: Omit<Product, 'id' | 'stock'>) => void;
     onUpdateProduct: (data: Product) => void;
     onDeleteProduct: (id: string) => void;
 }

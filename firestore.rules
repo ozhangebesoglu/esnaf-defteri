@@ -1,21 +1,9 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if the requesting user is the owner of the data.
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Rules for collections where documents have a `userId` field.
-    match /{collection}/{docId} {
-      allow read, update, delete: if collection in ['customers', 'products', 'orders', 'expenses', 'stockAdjustments', 'cashboxHistory', 'suppliers', 'staff'] && isOwner(resource.data.userId);
-      allow create: if collection in ['customers', 'products', 'orders', 'expenses', 'stockAdjustments', 'cashboxHistory', 'suppliers', 'staff'] && isOwner(request.resource.data.userId);
-    }
-
-    // Special rule for chatHistories where the document ID is the user's UID.
-    match /chatHistories/{userId} {
-      allow read, write: if isOwner(userId);
+    // Users can only read and write to their own documents.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth.uid == userId;
     }
   }
 }

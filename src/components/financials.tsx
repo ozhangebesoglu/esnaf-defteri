@@ -5,7 +5,7 @@ import type { Expense } from "@/lib/types"
 
 interface FinancialsProps {
   expenses: Expense[];
-  onAddExpense: (data: Omit<Expense, 'id'|'date'|'userId'>) => void;
+  onAddExpense: (data: Omit<Expense, 'id'|'date'>) => void;
   onUpdateExpense: (data: Expense) => void;
   onDeleteExpense: (id: string) => void;
 }

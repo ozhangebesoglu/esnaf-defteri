@@ -177,7 +177,7 @@ function AdjustmentForm({ adjustment, setOpen, onSave, products }: {
 interface StockAdjustmentsProps {
     stockAdjustments: StockAdjustment[];
     products: Product[];
-    onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date' | 'userId'>) => void;
+    onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void;
     onUpdateStockAdjustment: (data: StockAdjustment) => void;
     onDeleteStockAdjustment: (id: string) => void;
 }

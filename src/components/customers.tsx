@@ -32,7 +32,7 @@ interface CustomersProps {
     onUpdateCustomer: (data: Customer) => void;
     onDeleteCustomer: (id: string) => void;
     onAddPayment: (data: { customerId: string; total: number; description?: string; paymentMethod: 'cash' | 'visa' }) => void;
-    onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'|'userId'>) => void;
+    onAddSale: (data: Omit<Order, 'id'|'customerName'|'date'|'status'|'items'>) => void;
 }
 
 export default function Customers({ customers, orders, onAddCustomer, onUpdateCustomer, onDeleteCustomer, onAddPayment, onAddSale }: CustomersProps) {

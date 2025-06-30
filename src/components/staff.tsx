@@ -26,7 +26,7 @@ import { StaffForm } from "./staff-form"
 
 interface StaffProps {
     staff: Staff[];
-    onAddStaff: (data: Omit<Staff, 'id'|'userId'>) => void;
+    onAddStaff: (data: Omit<Staff, 'id'>) => void;
     onUpdateStaff: (data: Staff) => void;
     onDeleteStaff: (id: string) => void;
 }

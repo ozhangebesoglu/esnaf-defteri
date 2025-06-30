@@ -1,7 +1,6 @@
 
 export type FirestoreDoc = {
     id: string;
-    userId: string;
 }
 
 export type Order = FirestoreDoc & {
@@ -36,6 +35,7 @@ export type Customer = FirestoreDoc & {
 };
 
 export type MonitoringAlert = FirestoreDoc & {
+  userId: string; // This is generated client-side and not stored in Firestore, so it keeps userId
   severity: 'low' | 'medium' | 'high';
   title: string;
   description: string;

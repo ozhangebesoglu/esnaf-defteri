@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, getDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, getDoc } from "firebase/firestore";
 
 import {
   Sidebar,
@@ -156,7 +156,7 @@ export default function DashboardPage() {
     };
 
     const unsubscribes = Object.entries(collections).map(([collectionName, setState]) => {
-        const q = query(collection(db, collectionName), where("userId", "==", user.uid));
+        const q = query(collection(db, 'users', user.uid, collectionName));
         return onSnapshot(q, (querySnapshot) => {
             const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
             if (collectionName === 'orders' || collectionName === 'expenses' || collectionName === 'cashboxHistory' || collectionName === 'stockAdjustments') {
@@ -239,7 +239,7 @@ export default function DashboardPage() {
     setOpenMobile(false);
   };
 
-  const getCollectionRef = (collectionName: string) => collection(db, collectionName);
+  const getCollectionRef = (collectionName: string) => collection(db, 'users', user!.uid, collectionName);
 
   // Customers
   const handleAddCustomer = async (data: { name: string; email?: string; initialDebt?: number }) => {
@@ -248,7 +248,6 @@ export default function DashboardPage() {
     
     const newCustomerRef = doc(getCollectionRef('customers'));
     const newCustomerData = { 
-        userId: user.uid,
         name: data.name, 
         email: data.email || '', 
         balance: data.initialDebt || 0 
@@ -258,7 +257,6 @@ export default function DashboardPage() {
     if (data.initialDebt && data.initialDebt > 0) {
         const newOrderRef = doc(getCollectionRef('orders'));
         const newOrderData = {
-            userId: user.uid,
             customerId: newCustomerRef.id,
             customerName: data.name,
             date: new Date().toISOString(),
@@ -274,18 +272,19 @@ export default function DashboardPage() {
     toast({ title: "Müşteri Eklendi", description: `${data.name} başarıyla eklendi.` });
   };
   const handleUpdateCustomer = async (data: Customer) => {
+    if(!user) return;
     const { id, ...customerData } = data;
-    await updateDoc(doc(db, "customers", id), customerData);
+    await updateDoc(doc(db, "users", user.uid, "customers", id), customerData);
     toast({ title: "Müşteri Güncellendi", description: `${data.name} bilgileri güncellendi.` });
   };
   const handleDeleteCustomer = async (id: string) => {
     if (!user) return;
     const batch = writeBatch(db);
 
-    const customerRef = doc(db, "customers", id);
+    const customerRef = doc(db, "users", user.uid, "customers", id);
     batch.delete(customerRef);
 
-    const ordersQuery = query(collection(db, 'orders'), where("userId", "==", user.uid), where("customerId", "==", id));
+    const ordersQuery = query(getCollectionRef('orders'), where("customerId", "==", id));
     const ordersSnapshot = await getDocs(ordersQuery);
     ordersSnapshot.forEach(doc => {
       batch.delete(doc.ref);
@@ -296,25 +295,26 @@ export default function DashboardPage() {
   };
 
   // Products
-  const handleAddProduct = async (data: Omit<Product, 'id' | 'stock' | 'userId'>) => {
+  const handleAddProduct = async (data: Omit<Product, 'id' | 'stock'>) => {
      if(!user) return;
-    const newProduct = { ...data, stock: 0, userId: user.uid };
+    const newProduct = { ...data, stock: 0 };
     await addDoc(getCollectionRef('products'), newProduct);
     toast({ title: "Ürün Eklendi", description: `${newProduct.name} başarıyla eklendi.` });
   };
   const handleUpdateProduct = async (data: Product) => {
+    if(!user) return;
     const { id, ...productData } = data;
-    await updateDoc(doc(db, "products", id), productData);
+    await updateDoc(doc(db, "users", user.uid, "products", id), productData);
     toast({ title: "Ürün Güncellendi", description: `${data.name} bilgileri güncellendi.` });
   };
   const handleDeleteProduct = async (id: string) => {
     if (!user) return;
     const batch = writeBatch(db);
 
-    const productRef = doc(db, "products", id);
+    const productRef = doc(db, "users", user.uid, "products", id);
     batch.delete(productRef);
 
-    const adjustmentsQuery = query(collection(db, 'stockAdjustments'), where("userId", "==", user.uid), where("productId", "==", id));
+    const adjustmentsQuery = query(getCollectionRef('stockAdjustments'), where("productId", "==", id));
     const adjustmentsSnapshot = await getDocs(adjustmentsQuery);
     adjustmentsSnapshot.forEach(doc => {
         batch.delete(doc.ref);
@@ -325,14 +325,13 @@ export default function DashboardPage() {
   };
 
   // Sales (Orders)
-  const handleAddSale = async (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items' | 'userId' | 'paymentMethod'>) => {
+  const handleAddSale = async (data: Omit<Order, 'id' | 'customerName' | 'date' | 'status' | 'items' | 'paymentMethod'>) => {
     if(!user) return;
     const customer = customers.find(c => c.id === data.customerId);
     if (!customer) return;
 
     const newOrder = {
       ...data,
-      userId: user.uid,
       customerName: customer.name,
       date: new Date().toISOString(),
       status: 'Tamamlandı' as const,
@@ -344,7 +343,7 @@ export default function DashboardPage() {
     const orderRef = doc(getCollectionRef('orders'));
     batch.set(orderRef, newOrder);
     
-    const customerRef = doc(db, "customers", customer.id);
+    const customerRef = doc(db, "users", user.uid, "customers", customer.id);
     batch.update(customerRef, { balance: customer.balance + data.total });
     
     await batch.commit();
@@ -357,7 +356,6 @@ export default function DashboardPage() {
     if (!customer) return;
 
     const newPayment = {
-      userId: user.uid,
       customerId: data.customerId,
       customerName: customer.name,
       description: data.description || `${data.paymentMethod === 'cash' ? 'Nakit' : 'Visa'} Ödeme`,
@@ -373,7 +371,7 @@ export default function DashboardPage() {
     const paymentRef = doc(getCollectionRef('orders'));
     batch.set(paymentRef, newPayment);
 
-    const customerRef = doc(db, "customers", customer.id);
+    const customerRef = doc(db, "users", user.uid, "customers", customer.id);
     batch.update(customerRef, { balance: customer.balance - data.total });
 
     await batch.commit();
@@ -381,12 +379,13 @@ export default function DashboardPage() {
   };
 
   const handleUpdateSale = async (data: Order) => {
+    if(!user) return;
     const { id, ...orderData } = data;
     
-    const orderRef = doc(db, 'orders', id);
+    const orderRef = doc(db, "users", user.uid, 'orders', id);
     const orderSnap = await getDoc(orderRef);
 
-    if (!orderSnap.exists() || !user) {
+    if (!orderSnap.exists()) {
         toast({ title: "Hata", description: "Güncellenecek işlem bulunamadı.", variant: "destructive" });
         return;
     }
@@ -400,7 +399,7 @@ export default function DashboardPage() {
     if (oldOrder.customerId && oldOrder.customerId !== 'CASH_SALE') {
         const totalDifference = orderData.total - oldOrder.total;
         if (totalDifference !== 0) {
-            const customerRef = doc(db, 'customers', oldOrder.customerId);
+            const customerRef = doc(db, "users", user.uid, 'customers', oldOrder.customerId);
             const customerSnap = await getDoc(customerRef);
             if (customerSnap.exists()) {
                 const customer = customerSnap.data() as Customer;
@@ -414,10 +413,11 @@ export default function DashboardPage() {
   };
 
   const handleDeleteSale = async (id: string) => {
-    const orderToDeleteRef = doc(db, 'orders', id);
+    if (!user) return;
+    const orderToDeleteRef = doc(db, "users", user.uid, 'orders', id);
     const orderToDeleteSnap = await getDoc(orderToDeleteRef);
 
-    if (!orderToDeleteSnap.exists() || !user) return;
+    if (!orderToDeleteSnap.exists()) return;
     
     const orderToDelete = orderToDeleteSnap.data() as Order;
     
@@ -426,7 +426,7 @@ export default function DashboardPage() {
     batch.delete(orderToDeleteRef);
 
     if(orderToDelete.customerId !== 'CASH_SALE') {
-        const customerRef = doc(db, "customers", orderToDelete.customerId);
+        const customerRef = doc(db, "users", user.uid, "customers", orderToDelete.customerId);
         const customerSnap = await getDoc(customerRef);
         if (customerSnap.exists()) {
             const customer = customerSnap.data() as Customer;
@@ -442,7 +442,6 @@ export default function DashboardPage() {
   const handleAddCashSale = async (data: { description: string, total: number, paymentMethod: 'cash' | 'visa' }) => {
     if(!user) return;
     const newOrder = {
-      userId: user.uid,
       customerId: 'CASH_SALE',
       customerName: 'Peşin Satış',
       date: new Date().toISOString(),
@@ -458,31 +457,32 @@ export default function DashboardPage() {
   };
 
   // Expenses
-  const handleAddExpense = async (data: Omit<Expense, 'id' | 'date' | 'userId'>) => {
+  const handleAddExpense = async (data: Omit<Expense, 'id' | 'date'>) => {
     if(!user) return;
-    const newExpense = { ...data, date: new Date().toISOString(), userId: user.uid };
+    const newExpense = { ...data, date: new Date().toISOString() };
     await addDoc(getCollectionRef('expenses'), newExpense);
     toast({ title: "Gider Eklendi", description: "Yeni gider kaydı oluşturuldu." });
   };
   const handleUpdateExpense = async (data: Expense) => {
+    if(!user) return;
     const { id, ...expenseData } = data;
-    await updateDoc(doc(db, 'expenses', id), expenseData);
+    await updateDoc(doc(db, 'users', user.uid, 'expenses', id), expenseData);
     toast({ title: "Gider Güncellendi" });
   };
   const handleDeleteExpense = async (id: string) => {
-    await deleteDoc(doc(db, 'expenses', id));
+    if(!user) return;
+    await deleteDoc(doc(db, 'users', user.uid, 'expenses', id));
     toast({ title: "Gider Silindi", variant: "destructive" });
   };
 
   // Stock Adjustments
-  const handleAddStockAdjustment = async (data: Omit<StockAdjustment, 'id' | 'productName' | 'date' | 'userId'>) => {
+  const handleAddStockAdjustment = async (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => {
     if(!user) return;
     const product = products.find(p => p.id === data.productId);
     if (!product) return;
     
     const newAdjustment = { 
       ...data,
-      userId: user.uid,
       productName: product.name,
       date: new Date().toISOString(),
     };
@@ -492,21 +492,23 @@ export default function DashboardPage() {
     const adjRef = doc(getCollectionRef('stockAdjustments'));
     batch.set(adjRef, newAdjustment);
 
-    const productRef = doc(db, "products", product.id);
+    const productRef = doc(db, "users", user.uid, "products", product.id);
     batch.update(productRef, { stock: product.stock + data.quantity });
 
     await batch.commit();
     toast({ title: "Stok Hareketi Eklendi" });
   };
   const handleUpdateStockAdjustment = async (data: StockAdjustment) => {
+    if(!user) return;
     const { id, ...adjData } = data;
-    await updateDoc(doc(db, 'stockAdjustments', id), adjData);
+    await updateDoc(doc(db, 'users', user.uid, 'stockAdjustments', id), adjData);
     toast({ title: "Stok Hareketi Güncellendi" });
   };
   const handleDeleteStockAdjustment = async (id: string) => {
-    const adjToDeleteRef = doc(db, 'stockAdjustments', id);
+    if(!user) return;
+    const adjToDeleteRef = doc(db, 'users', user.uid, 'stockAdjustments', id);
     const adjToDeleteSnap = await getDoc(adjToDeleteRef);
-    if(!adjToDeleteSnap.exists() || !user) return;
+    if(!adjToDeleteSnap.exists()) return;
     
     const adjToDelete = adjToDeleteSnap.data() as StockAdjustment;
 
@@ -515,7 +517,7 @@ export default function DashboardPage() {
 
     const product = products.find(p => p.id === adjToDelete.productId);
     if(product) {
-        const productRef = doc(db, "products", product.id);
+        const productRef = doc(db, "users", user.uid, "products", product.id);
         batch.update(productRef, { stock: product.stock - adjToDelete.quantity });
     }
 
@@ -524,36 +526,38 @@ export default function DashboardPage() {
   };
   
   // Suppliers
-  const handleAddSupplier = async (data: Omit<Supplier, 'id'|'userId'>) => {
+  const handleAddSupplier = async (data: Omit<Supplier, 'id'>) => {
     if(!user) return;
-    const newSupplier = { ...data, userId: user.uid };
-    await addDoc(getCollectionRef('suppliers'), newSupplier);
-    toast({ title: "Tedarikçi Eklendi", description: `${newSupplier.name} başarıyla eklendi.` });
+    await addDoc(getCollectionRef('suppliers'), data);
+    toast({ title: "Tedarikçi Eklendi", description: `${data.name} başarıyla eklendi.` });
   };
   const handleUpdateSupplier = async (data: Supplier) => {
+    if(!user) return;
     const { id, ...supplierData } = data;
-    await updateDoc(doc(db, 'suppliers', id), supplierData);
+    await updateDoc(doc(db, 'users', user.uid, 'suppliers', id), supplierData);
     toast({ title: "Tedarikçi Güncellendi", description: `${data.name} bilgileri güncellendi.` });
   };
   const handleDeleteSupplier = async (id: string) => {
-    await deleteDoc(doc(db, 'suppliers', id));
+    if(!user) return;
+    await deleteDoc(doc(db, 'users', user.uid, 'suppliers', id));
     toast({ title: "Tedarikçi Silindi", variant: "destructive" });
   };
 
   // Staff
-  const handleAddStaff = async (data: Omit<StaffType, 'id'|'userId'>) => {
+  const handleAddStaff = async (data: Omit<StaffType, 'id'>) => {
     if(!user) return;
-    const newStaff = { ...data, userId: user.uid };
-    await addDoc(getCollectionRef('staff'), newStaff);
-    toast({ title: "Personel Eklendi", description: `${newStaff.name} başarıyla eklendi.` });
+    await addDoc(getCollectionRef('staff'), data);
+    toast({ title: "Personel Eklendi", description: `${data.name} başarıyla eklendi.` });
   };
   const handleUpdateStaff = async (data: StaffType) => {
+    if(!user) return;
     const { id, ...staffData } = data;
-    await updateDoc(doc(db, 'staff', id), staffData);
+    await updateDoc(doc(db, 'users', user.uid, 'staff', id), staffData);
     toast({ title: "Personel Güncellendi", description: `${data.name} bilgileri güncellendi.` });
   };
   const handleDeleteStaff = async (id: string) => {
-    await deleteDoc(doc(db, 'staff', id));
+    if(!user) return;
+    await deleteDoc(doc(db, 'users', user.uid, 'staff', id));
     toast({ title: "Personel Silindi", variant: "destructive" });
   };
 
@@ -580,7 +584,6 @@ export default function DashboardPage() {
     const cashDifference = data.countedCash - expectedCash;
     const newEntry = {
         date: new Date().toISOString(),
-        userId: user.uid,
         openingCash,
         cashIn: cashInToday,
         visaIn: visaInToday,
@@ -605,7 +608,7 @@ export default function DashboardPage() {
     const cashDifference = (historyData.countedCash ?? 0) - (historyData.expectedCash ?? 0);
     const updatedData = { ...historyData, cashDifference };
 
-    await updateDoc(doc(db, "cashboxHistory", id), updatedData);
+    await updateDoc(doc(db, "users", user.uid, "cashboxHistory", id), updatedData);
     toast({
       title: "Kasa Kaydı Güncellendi",
       description: `${new Date(data.date).toLocaleDateString('tr-TR')} tarihli kasa kaydı güncellendi.`,

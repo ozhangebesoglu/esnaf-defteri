@@ -146,7 +146,7 @@ function ExpenseForm({ expense, setOpen, onSave }: { expense?: Expense, setOpen:
 
 interface ExpensesProps {
     expenses: Expense[];
-    onAddExpense: (data: Omit<Expense, 'id' | 'date'|'userId'>) => void;
+    onAddExpense: (data: Omit<Expense, 'id' | 'date'>) => void;
     onUpdateExpense: (data: Expense) => void;
     onDeleteExpense: (id: string) => void;
 }

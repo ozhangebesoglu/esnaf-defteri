@@ -28,7 +28,7 @@ const stockEntrySchema = z.object({
 function StockEntryForm({ product, setOpen, onSave }: {
   product: Product,
   setOpen: (open: boolean) => void,
-  onSave: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date' | 'userId'>) => void
+  onSave: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void
 }) {
   const form = useForm<z.infer<typeof stockEntrySchema>>({
     resolver: zodResolver(stockEntrySchema),
@@ -88,7 +88,7 @@ function StockEntryForm({ product, setOpen, onSave }: {
 interface StockStatusProps {
     products: Product[];
     onProductSelect: (productId: string) => void;
-    onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date' | 'userId'>) => void;
+    onAddStockAdjustment: (data: Omit<StockAdjustment, 'id' | 'productName' | 'date'>) => void;
 }
 
 export default function StockStatus({ products, onProductSelect, onAddStockAdjustment }: StockStatusProps) {

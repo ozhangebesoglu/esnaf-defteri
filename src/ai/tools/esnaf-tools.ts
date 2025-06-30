@@ -8,11 +8,11 @@ import type { Customer, Product, Order, Expense, StockAdjustment } from '@/lib/t
 
 
 // Helper to find a resource by name, used internally by tools
-const findResourceByName = async <T extends { name: string, userId: string }>(collectionName: string, name: string, userId: string): Promise<(T & {id: string}) | null> => {
+const findResourceByName = async <T extends { name: string }>(collectionName: string, name: string, userId: string): Promise<(T & {id: string}) | null> => {
   const lowerCaseName = name.toLowerCase();
-  const q = adminDb.collection(collectionName).where("userId", "==", userId);
+  const collectionRef = adminDb.collection('users').doc(userId).collection(collectionName);
   
-  const querySnapshot = await q.get();
+  const querySnapshot = await collectionRef.get();
   if (querySnapshot.empty) return null;
 
   // Manual client-side filtering for case-insensitivity
@@ -24,14 +24,6 @@ const findResourceByName = async <T extends { name: string, userId: string }>(co
   
   return null;
 };
-
-
-// Helper to find a resource by ID
-const findResourceById = async (collectionName: string, id: string): Promise<any | null> => {
-    const docRef = adminDb.collection(collectionName).doc(id);
-    const docSnap = await docRef.get();
-    return docSnap.exists ? { id: docSnap.id, ...docSnap.data() } : null;
-}
 
 
 // Shared output schema for most tools
@@ -61,9 +53,8 @@ export const addSaleTool = ai.defineTool(
     }
 
     const batch = adminDb.batch();
-    const newOrderRef = adminDb.collection('orders').doc();
+    const newOrderRef = adminDb.collection('users').doc(userId).collection('orders').doc();
     batch.set(newOrderRef, {
-      userId,
       customerId: customer.id,
       customerName: customer.name,
       date: new Date().toISOString(),
@@ -73,7 +64,7 @@ export const addSaleTool = ai.defineTool(
       total,
     });
 
-    const customerRef = adminDb.collection("customers").doc(customer.id);
+    const customerRef = adminDb.collection("users").doc(userId).collection("customers").doc(customer.id);
     batch.update(customerRef, { balance: customer.balance + total });
     
     await batch.commit();
@@ -93,8 +84,7 @@ export const addCashSaleTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ description, total, userId, paymentMethod }) => {
-     await adminDb.collection('orders').add({
-      userId,
+     await adminDb.collection('users').doc(userId).collection('orders').add({
       customerId: 'CASH_SALE',
       customerName: 'Peşin Satış',
       date: new Date().toISOString(),
@@ -133,9 +123,8 @@ export const addPaymentTool = ai.defineTool(
     }
 
     const batch = adminDb.batch();
-    const newPaymentRef = adminDb.collection('orders').doc();
+    const newPaymentRef = adminDb.collection('users').doc(userId).collection('orders').doc();
     batch.set(newPaymentRef, {
-      userId,
       customerId: customer.id,
       customerName: customer.name,
       description: description || (paymentMethod === 'cash' ? 'Nakit Ödeme' : 'Visa Ödeme'),
@@ -146,7 +135,7 @@ export const addPaymentTool = ai.defineTool(
       paymentMethod,
     });
 
-    const customerRef = adminDb.collection("customers").doc(customer.id);
+    const customerRef = adminDb.collection("users").doc(userId).collection("customers").doc(customer.id);
     batch.update(customerRef, { balance: customer.balance - total });
 
     await batch.commit();
@@ -168,8 +157,7 @@ export const addExpenseTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ description, amount, category, userId }) => {
-    await adminDb.collection('expenses').add({
-      userId,
+    await adminDb.collection('users').doc(userId).collection('expenses').add({
       date: new Date().toISOString(),
       description,
       amount,
@@ -218,9 +206,8 @@ export const addStockAdjustmentTool = ai.defineTool(
     }
 
     const batch = adminDb.batch();
-    const newAdjRef = adminDb.collection('stockAdjustments').doc();
+    const newAdjRef = adminDb.collection('users').doc(userId).collection('stockAdjustments').doc();
     batch.set(newAdjRef, {
-      userId,
       productId: product.id,
       productName: product.name,
       date: new Date().toISOString(),
@@ -229,7 +216,7 @@ export const addStockAdjustmentTool = ai.defineTool(
       category,
     });
 
-    const productRef = adminDb.collection("products").doc(product.id);
+    const productRef = adminDb.collection("users").doc(userId).collection("products").doc(product.id);
     batch.update(productRef, { stock: newStock });
 
     await batch.commit();
@@ -256,18 +243,16 @@ export const addCustomerTool = ai.defineTool(
     }
     
     const batch = adminDb.batch();
-    const newCustomerRef = adminDb.collection('customers').doc();
+    const newCustomerRef = adminDb.collection('users').doc(userId).collection('customers').doc();
     batch.set(newCustomerRef, { 
-        userId,
         name: customerName, 
         email: '', 
         balance: initialDebt || 0 
     });
 
     if (initialDebt && initialDebt > 0) {
-        const newOrderRef = adminDb.collection('orders').doc();
+        const newOrderRef = adminDb.collection('users').doc(userId).collection('orders').doc();
         batch.set(newOrderRef, {
-            userId,
             customerId: newCustomerRef.id,
             customerName,
             date: new Date().toISOString(),
@@ -306,9 +291,9 @@ export const deleteCustomerTool = ai.defineTool(
     }
 
     const batch = adminDb.batch();
-    batch.delete(adminDb.collection('customers').doc(customer.id));
+    batch.delete(adminDb.collection('users').doc(userId).collection('customers').doc(customer.id));
 
-    const ordersQuery = adminDb.collection('orders').where("userId", "==", userId).where("customerId", "==", customer.id);
+    const ordersQuery = adminDb.collection('users').doc(userId).collection('orders').where("customerId", "==", customer.id);
     const ordersSnapshot = await ordersQuery.get();
     ordersSnapshot.forEach(doc => batch.delete(doc.ref));
 
@@ -332,7 +317,7 @@ export const deleteProductTool = ai.defineTool(
         return `"${productName}" adında bir ürün bulamadım.`;
      }
      
-     await adminDb.collection('products').doc(product.id).delete();
+     await adminDb.collection('users').doc(userId).collection('products').doc(product.id).delete();
      // Note: Associated stock adjustments are not deleted to preserve history, but could be.
      return `${product.name} adlı ürün başarıyla silindi.`;
   }
@@ -348,10 +333,10 @@ export const deleteSaleTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ saleId, userId }) => {
-      const saleRef = adminDb.collection('orders').doc(saleId);
+      const saleRef = adminDb.collection('users').doc(userId).collection('orders').doc(saleId);
       const saleSnap = await saleRef.get();
 
-      if (!saleSnap.exists || saleSnap.data()!.userId !== userId) {
+      if (!saleSnap.exists) {
           return `"${saleId}" numaralı bir satış veya ödeme bulamadım.`;
       }
       const sale = saleSnap.data() as Order;
@@ -360,7 +345,7 @@ export const deleteSaleTool = ai.defineTool(
       batch.delete(saleRef);
 
       if (sale.customerId && sale.customerId !== 'CASH_SALE') {
-          const customerRef = adminDb.collection('customers').doc(sale.customerId);
+          const customerRef = adminDb.collection('users').doc(userId).collection('customers').doc(sale.customerId);
           const customerSnap = await customerRef.get();
           if (customerSnap.exists) {
               const customer = customerSnap.data() as Customer;
@@ -383,10 +368,10 @@ export const deleteExpenseTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ expenseId, userId }) => {
-      const expenseRef = adminDb.collection('expenses').doc(expenseId);
+      const expenseRef = adminDb.collection('users').doc(userId).collection('expenses').doc(expenseId);
       const expenseSnap = await expenseRef.get();
 
-       if (!expenseSnap.exists || expenseSnap.data()!.userId !== userId) {
+       if (!expenseSnap.exists) {
           return `"${expenseId}" numaralı bir gider bulamadım.`;
       }
       
@@ -408,10 +393,10 @@ export const deleteStockAdjustmentTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ adjustmentId, userId }) => {
-      const adjRef = adminDb.collection('stockAdjustments').doc(adjustmentId);
+      const adjRef = adminDb.collection('users').doc(userId).collection('stockAdjustments').doc(adjustmentId);
       const adjSnap = await adjRef.get();
 
-       if (!adjSnap.exists || adjSnap.data()!.userId !== userId) {
+       if (!adjSnap.exists) {
           return `"${adjustmentId}" numaralı bir stok hareketi bulamadım.`;
       }
       const adj = adjSnap.data() as StockAdjustment;
@@ -420,7 +405,7 @@ export const deleteStockAdjustmentTool = ai.defineTool(
       batch.delete(adjRef);
 
       if (adj.productId) {
-          const productRef = adminDb.collection('products').doc(adj.productId);
+          const productRef = adminDb.collection('users').doc(userId).collection('products').doc(adj.productId);
           const productSnap = await productRef.get();
           if (productSnap.exists) {
               const product = productSnap.data() as Product;

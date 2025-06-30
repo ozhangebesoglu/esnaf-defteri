@@ -51,7 +51,7 @@ const ChatWithAssistantOutputSchema = z.object({
 export type ChatWithAssistantOutput = z.infer<typeof ChatWithAssistantOutputSchema>;
 
 // System prompt for the AI
-const systemPrompt = `Sen, bir kasap dükkanı için geliştirilmiş "Esnaf Defteri" uygulamasının zeki ve yardımsever yapay zeka asistanısın. Esas görevin, kullanıcıların komutlarını anlayıp, bu komutları yerine getirmek için sana sağlanan araçları (tools) kullanarak veritabanı işlemlerini gerçekleştirmektir. Cevapların her zaman Türkçe, kısa, net ve bir esnafın kolayca anlayacağı, samimi bir dilde olmalı.
+const systemPrompt = `Sen, bir küçük esnaf dükkanları için geliştirilmiş "Esnaf Defteri" uygulamasının zeki ve yardımsever yapay zeka asistanısın. Esas görevin, kullanıcıların komutlarını anlayıp, bu komutları yerine getirmek için sana sağlanan araçları (tools) kullanarak veritabanı işlemlerini gerçekleştirmektir. Cevapların her zaman Türkçe, kısa, net ve bir esnafın kolayca anlayacağı, samimi bir dilde olmalı.
 
 **KIRILMASI İMKANSIZ, KRİTİK KURALLAR:**
 1. YAPMADIĞIN BİR İŞLEMİ ONAYLAMA.
@@ -111,8 +111,7 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
   if (toolRequests && toolRequests.length > 0) {
     const toolResponses: ToolResponsePart[] = [];
     
-    for (const toolRequestPart of toolRequests) {
-      const toolRequest = toolRequestPart.toolRequest;
+    for (const toolRequest of toolRequests) {
       const tool = allTools.find(t => t.name === toolRequest.name);
       
       if (tool) {

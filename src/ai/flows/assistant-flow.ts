@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview A stateless conversational AI assistant for the Esnaf Defteri app that can understand and execute commands by calling tools that interact with the database. This version does not persist conversation history.
+ * @fileOverview A stateful conversational AI assistant for the Esnaf Defteri app that can understand and execute commands by calling tools that interact with the database. It remembers conversation history.
  */
 
 import { ai } from '@/ai/genkit';
@@ -20,6 +20,8 @@ import {
   deleteStockAdjustmentTool,
 } from '@/ai/tools/esnaf-tools';
 import type { MessageData, ToolResponsePart } from 'genkit';
+import { adminDb } from '@/lib/firebase-admin';
+import type { ChatHistory } from '@/lib/types';
 
 // All available tools
 const allTools = [
@@ -60,29 +62,53 @@ const systemPrompt = `Sen, bir kasap dükkanı için geliştirilmiş "Esnaf Deft
 6. KULLANICI ID'Sİ İSTEME: Kullanıcı ID'si sana sistem tarafından otomatik olarak veriliyor. Kullanıcıdan asla ve asla ID, kimlik veya benzeri bir bilgi isteme.
 7. ASIL AMACIN ARAÇ KULLANMAK.`;
 
+// Helper functions to get and save chat history
+async function getChatHistory(userId: string): Promise<MessageData[]> {
+  if (!userId) return [];
+  const historyRef = adminDb.collection('chatHistories').doc(userId);
+  const historySnap = await historyRef.get();
 
-// Main AI chat handler (stateless version)
+  if (historySnap.exists) {
+    const data = historySnap.data() as ChatHistory;
+    // Basic validation to prevent crash on corrupted data
+    if (data && Array.isArray(data.history)) {
+       return data.history;
+    }
+  }
+  return []; // Return empty history if not found or corrupted
+}
+
+async function saveChatHistory(userId: string, history: MessageData[]): Promise<void> {
+  if (!userId) return;
+  const historyRef = adminDb.collection('chatHistories').doc(userId);
+  await historyRef.set({ userId, history });
+}
+
+
+// Main AI chat handler (stateful version)
 export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<ChatWithAssistantOutput> {
   const { newMessage, userId } = input;
 
-  // This is a stateless flow, so we only use the current message.
-  // We build a message history for this turn only to support multi-step tool calling.
-  const messages: MessageData[] = [
-    { role: 'user', content: [{ text: newMessage }] },
-  ];
+  // 1. Get existing history from Firestore
+  const history = await getChatHistory(userId);
 
+  // 2. Add the new user message to the history for this turn
+  history.push({ role: 'user', content: [{ text: newMessage }] });
+
+  // 3. Generate a response, which may include tool requests
   const llmResponse = await ai.generate({
     system: systemPrompt,
-    messages: messages,
+    messages: history,
     tools: allTools,
   });
 
+  const modelChoice = llmResponse.choices[0];
+  history.push(modelChoice.message); // Add the model's full response (text or tool_request) to history
+
   const toolRequests = llmResponse.toolRequests;
 
+  // 4. Handle tool requests if the model generated any
   if (toolRequests && toolRequests.length > 0) {
-    // Add the model's request to use tools to our turn's history
-    messages.push({ role: 'model', content: toolRequests });
-
     const toolResponses: ToolResponsePart[] = [];
     
     for (const toolRequestPart of toolRequests) {
@@ -90,6 +116,7 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
       const tool = allTools.find(t => t.name === toolRequest.name);
       
       if (tool) {
+        // IMPORTANT: Add the server-side userId to the input before calling the tool
         const toolInputWithUser = { ...toolRequest.input, userId };
         const output = await tool(toolInputWithUser as any);
         
@@ -107,27 +134,36 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
           toolResponse: {
             name: toolRequest.name,
             toolCallId: toolRequest.toolCallId,
-            output: { error: errorMsg }, // Return structured error
+            output: { error: errorMsg },
           },
         });
       }
     }
     
-    // Add the results of the tool calls to our turn's history
-    messages.push({ role: 'tool', content: toolResponses });
+    // 5. Add tool execution results to history
+    history.push({ role: 'tool', content: toolResponses });
 
-    // Call the model again with the tool results to get a final natural language response
+    // 6. Call the model again with the tool results to get a final natural language response
     const finalLlmResponse = await ai.generate({
       system: systemPrompt,
-      messages: messages,
+      messages: history,
       tools: allTools,
     });
-
+    
+    history.push(finalLlmResponse.choices[0].message); // Add the final text response to history
+    
     const finalResponseText = finalLlmResponse.text;
+
+    // 7. Save the complete, updated history and return the response
+    await saveChatHistory(userId, history);
     return { textResponse: finalResponseText };
+
   } else {
-    // No tools were called, just return the model's direct response.
+    // No tools were called. The model's response is the final response.
     const finalResponseText = llmResponse.text;
+    
+    // Save the history (user message + model response) and return
+    await saveChatHistory(userId, history);
     return { textResponse: finalResponseText };
   }
 }

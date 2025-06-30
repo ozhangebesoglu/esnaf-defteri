@@ -51,7 +51,6 @@ export const addSaleTool = ai.defineTool(
         .string()
         .describe('Satılan ürünlerin veya hizmetin açıklaması.'),
       total: z.number().describe('Satışın toplam tutarı (Türk Lirası).'),
-      userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
@@ -90,7 +89,6 @@ export const addCashSaleTool = ai.defineTool(
       description: z.string().describe('Satılan ürünlerin veya hizmetin açıklaması.'),
       total: z.number().describe('Satışın toplam tutarı (Türk Lirası).'),
       paymentMethod: z.enum(['cash', 'visa']).describe("Ödeme yöntemi, 'cash' (nakit) veya 'visa' (kredi kartı/POS)."),
-      userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
@@ -125,7 +123,6 @@ export const addPaymentTool = ai.defineTool(
         .optional(),
       total: z.number().describe('Ödenen toplam tutar (Türk Lirası).'),
       paymentMethod: z.enum(['cash', 'visa']).describe("Ödeme yöntemi, 'cash' (nakit) veya 'visa' (kredi kartı/POS)."),
-      userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
@@ -167,7 +164,6 @@ export const addExpenseTool = ai.defineTool(
       category: z
         .enum(['Kira', 'Fatura', 'Malzeme', 'Maaş', 'Diğer'])
         .describe('Giderin kategorisi.'),
-       userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
@@ -207,7 +203,6 @@ export const addStockAdjustmentTool = ai.defineTool(
           'Diğer',
         ])
         .describe('Stok hareketinin kategorisi.'),
-       userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
@@ -251,7 +246,6 @@ export const addCustomerTool = ai.defineTool(
         .string()
         .describe('Yeni müşterinin tam adı.'),
       initialDebt: z.number().describe("Müşterinin başlangıç borç tutarı. Belirtilmemişse 0'dır.").optional().default(0),
-      userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
@@ -302,7 +296,6 @@ export const deleteCustomerTool = ai.defineTool(
     description: 'Bir müşteriyi ve ona ait tüm borç/ödeme kayıtlarını sistemden kalıcı olarak siler.',
     inputSchema: z.object({
       customerName: z.string().describe('Silinecek müşterinin tam adı.'),
-      userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
@@ -330,7 +323,6 @@ export const deleteProductTool = ai.defineTool(
     description: 'Bir ürünü ürün listesinden kalıcı olarak siler.',
     inputSchema: z.object({
       productName: z.string().describe('Silinecek ürünün adı.'),
-      userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
@@ -352,7 +344,6 @@ export const deleteSaleTool = ai.defineTool(
     description: 'Belirli bir satış veya ödeme işlemini kimliğine (ID) göre siler. Örneğin: "ORD001 numaralı satışı sil."',
     inputSchema: z.object({
       saleId: z.string().describe('Silinecek satış veya ödeme işleminin IDsi, örn., "ORD001" veya "PAY001".'),
-      userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
@@ -388,7 +379,6 @@ export const deleteExpenseTool = ai.defineTool(
     description: 'Belirli bir gider kaydını kimliğine (ID) göre siler.',
     inputSchema: z.object({
       expenseId: z.string().describe('Silinecek gider kaydının IDsi, örn., "EXP001".'),
-      userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },
@@ -414,7 +404,6 @@ export const deleteStockAdjustmentTool = ai.defineTool(
       adjustmentId: z
         .string()
         .describe('Silinecek stok hareketinin IDsi, örn., "ADJ001".'),
-      userId: z.string().describe("The user's Firebase UID.")
     }),
     outputSchema: ToolOutputSchema,
   },

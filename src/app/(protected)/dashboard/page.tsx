@@ -379,11 +379,40 @@ export default function DashboardPage() {
     await batch.commit();
     toast({ title: "Ödeme Alındı", description: `${customer.name} için ödeme kaydedildi.` });
   };
+
   const handleUpdateSale = async (data: Order) => {
     const { id, ...orderData } = data;
-    await updateDoc(doc(db, 'orders', id), orderData);
-    toast({ title: "Satış Güncellendi", description: `${data.id} numaralı satış güncellendi.` });
+    
+    const orderRef = doc(db, 'orders', id);
+    const orderSnap = await getDoc(orderRef);
+
+    if (!orderSnap.exists() || !user) {
+        toast({ title: "Hata", description: "Güncellenecek işlem bulunamadı.", variant: "destructive" });
+        return;
+    }
+
+    const oldOrder = orderSnap.data() as Order;
+    
+    const batch = writeBatch(db);
+    
+    batch.update(orderRef, orderData);
+
+    if (oldOrder.customerId && oldOrder.customerId !== 'CASH_SALE') {
+        const totalDifference = orderData.total - oldOrder.total;
+        if (totalDifference !== 0) {
+            const customerRef = doc(db, 'customers', oldOrder.customerId);
+            const customerSnap = await getDoc(customerRef);
+            if (customerSnap.exists()) {
+                const customer = customerSnap.data() as Customer;
+                batch.update(customerRef, { balance: customer.balance + totalDifference });
+            }
+        }
+    }
+    
+    await batch.commit();
+    toast({ title: "İşlem Güncellendi", description: `#${id} numaralı işlem güncellendi.` });
   };
+
   const handleDeleteSale = async (id: string) => {
     const orderToDeleteRef = doc(db, 'orders', id);
     const orderToDeleteSnap = await getDoc(orderToDeleteRef);
@@ -621,7 +650,7 @@ export default function DashboardPage() {
                   creditSales={creditSales}
                   cashSales={cashSales}
                   customers={customers}
-                  onAddSale={handleAddSale}
+                  onAddSale={onAddSale}
                   onUpdateSale={handleUpdateSale}
                   onDeleteSale={handleDeleteSale}
                   onAddCashSale={handleAddCashSale}

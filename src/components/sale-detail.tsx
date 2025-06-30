@@ -47,9 +47,9 @@ export default function SaleDetail({ order, customer, onBack, onUpdateSale }: {
        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Satışı Düzenle</DialogTitle>
+              <DialogTitle>İşlemi Düzenle</DialogTitle>
               <DialogDescription>
-                 {order.id} numaralı satışı düzenleyin.
+                 #{order.id} numaralı işlemi düzenleyin. Bu işlem müşterinin bakiyesini de etkileyebilir.
               </DialogDescription>
             </DialogHeader>
             <SaleForm sale={order} setOpen={setIsEditDialogOpen} onSave={handleSave} customers={customer ? [customer] : []} />

@@ -10,17 +10,19 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import type { Customer, Order } from "@/lib/types"
 
 export const saleSchema = z.object({
   id: z.string().optional(),
   customerId: z.string().min(1, "Lütfen bir müşteri seçin."),
   description: z.string().min(5, "Açıklama en az 5 karakter olmalıdır."),
-  total: z.coerce.number().positive("Tutar pozitif bir sayı olmalıdır."),
+  total: z.coerce.number().refine(val => val !== 0, "Tutar 0 olamaz."),
   status: z.enum(['Tamamlandı', 'Bekliyor', 'İptal Edildi']).optional(),
   items: z.number().optional(),
   customerName: z.string().optional(),
   date: z.string().optional(),
+  paymentMethod: z.enum(['cash', 'visa']).optional(),
 })
 
 interface SaleFormProps {
@@ -33,13 +35,19 @@ interface SaleFormProps {
 export function SaleForm({ sale, setOpen, onSave, customers }: SaleFormProps) {
   const form = useForm<z.infer<typeof saleSchema>>({
     resolver: zodResolver(saleSchema),
-    defaultValues: sale || { description: "", total: '' as any, customerId: undefined },
+    defaultValues: sale ? { ...sale, total: Math.abs(sale.total) } : { description: "", total: '' as any, customerId: undefined },
   })
 
   function onSubmit(values: z.infer<typeof saleSchema>) {
+    // If we are editing, preserve the sign of the original total
+    if (sale) {
+      values.total = Math.abs(values.total) * Math.sign(sale.total);
+    }
     onSave(values);
     setOpen(false)
   }
+
+  const isPayment = sale && sale.total < 0;
 
   return (
     <Form {...form}>
@@ -88,8 +96,32 @@ export function SaleForm({ sale, setOpen, onSave, customers }: SaleFormProps) {
             </FormItem>
           )}
         />
+        {isPayment && (
+          <FormField
+            control={form.control}
+            name="paymentMethod"
+            render={({ field }) => (
+              <FormItem className="space-y-3">
+                <FormLabel>Ödeme Yöntemi</FormLabel>
+                <FormControl>
+                  <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4">
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormControl><RadioGroupItem value="cash" /></FormControl>
+                      <FormLabel className="font-normal">Nakit</FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormControl><RadioGroupItem value="visa" /></FormControl>
+                      <FormLabel className="font-normal">Visa/POS</FormLabel>
+                    </FormItem>
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <DialogFooter>
-          <Button type="submit">Satışı Kaydet</Button>
+          <Button type="submit">İşlemi Kaydet</Button>
         </DialogFooter>
       </form>
     </Form>

@@ -650,7 +650,7 @@ export default function DashboardPage() {
                   creditSales={creditSales}
                   cashSales={cashSales}
                   customers={customers}
-                  onAddSale={onAddSale}
+                  onAddSale={handleAddSale}
                   onUpdateSale={handleUpdateSale}
                   onDeleteSale={handleDeleteSale}
                   onAddCashSale={handleAddCashSale}

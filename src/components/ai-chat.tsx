@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Bot, Loader2, Send, User } from 'lucide-react';
 
 import { useAuth } from '@/contexts/auth-context';
-import { chatWithAssistant, getChatHistory } from '@/ai/flows/assistant-flow';
+import { chatWithAssistant } from '@/ai/flows/assistant-flow';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -30,8 +30,8 @@ const welcomeMessage: Message = {
 export default function AiChat() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Chat history is now session-only
   const [chatHistory, setChatHistory] = useState<Message[]>([welcomeMessage]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -41,37 +41,6 @@ export default function AiChat() {
     },
   });
 
-  // Load chat history using the server action on component mount
-  useEffect(() => {
-    if (!user) {
-        setIsHistoryLoading(false);
-        return;
-    };
-    
-    const loadHistory = async () => {
-      setIsHistoryLoading(true);
-      try {
-        const history = await getChatHistory(user.uid);
-        if (history.length > 0) {
-            setChatHistory(history);
-        } else {
-            setChatHistory([welcomeMessage]);
-        }
-      } catch (error) {
-        console.error("Failed to load chat history:", error);
-        const errorMessage: Message = {
-            role: 'model',
-            content: 'Sohbet geçmişi yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.',
-        };
-        setChatHistory([errorMessage]);
-      } finally {
-        setIsHistoryLoading(false);
-      }
-    };
-
-    loadHistory();
-  }, [user]);
-  
   // Auto-scroll to the bottom of the chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -80,19 +49,12 @@ export default function AiChat() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user) {
-        // This should not happen if the component is rendered, but it's good practice
         return;
     }
 
     const userMessage: Message = { role: 'user', content: values.message };
 
-    const isFirstMessage = chatHistory.length === 1 && chatHistory[0].content === welcomeMessage.content;
-    
-    if (isFirstMessage) {
-        setChatHistory([userMessage]);
-    } else {
-        setChatHistory(current => [...current, userMessage]);
-    }
+    setChatHistory(current => [...current, userMessage]);
     
     setIsLoading(true);
     form.reset();
@@ -126,17 +88,13 @@ export default function AiChat() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Bot /> Yapay Zeka Asistanı</CardTitle>
         <CardDescription>
-          İşletmenizle ilgili komutlar verin, anında gerçekleştirilsin. Konuşmalarınız hatırlanacaktır.
+          İşletmenizle ilgili komutlar verin, anında gerçekleştirilsin. Sohbet geçmişi kaydedilmemektedir.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
         <ScrollArea className="flex-1 pr-4 -mr-4">
             <div className="space-y-6">
-                {isHistoryLoading ? (
-                  <div className="flex justify-center items-center h-full">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : renderableHistory.map((message, index) => (
+                {renderableHistory.map((message, index) => (
                     <div key={index} className={cn("flex items-start gap-4", message.role === 'user' && 'justify-end')}>
                         {message.role === 'model' && (
                              <Avatar className="h-9 w-9 border">
@@ -175,12 +133,12 @@ export default function AiChat() {
                     render={({ field }) => (
                         <FormItem className="flex-1">
                             <FormControl>
-                                <Input placeholder="Mesajınızı buraya yazın..." {...field} disabled={isLoading || isHistoryLoading} autoComplete="off" />
+                                <Input placeholder="Mesajınızı buraya yazın..." {...field} disabled={isLoading} autoComplete="off" />
                             </FormControl>
                         </FormItem>
                     )}
                     />
-                    <Button type="submit" disabled={isLoading || isHistoryLoading} size="icon">
+                    <Button type="submit" disabled={isLoading} size="icon">
                         <Send className="h-4 w-4" />
                     </Button>
                 </form>

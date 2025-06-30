@@ -109,7 +109,7 @@ export default function Dashboard({ customers, expenses, salesData, isMobile }: 
           </CardHeader>
           <CardContent>
             <ChartContainer config={barChartConfig} className="h-56 md:h-64">
-              <BarChart accessibilityLayer data={salesData}>
+              <BarChart accessibilityLayer data={salesData} maxBarSize={60}>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="month"

@@ -35,6 +35,29 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+const getFirebaseAuthErrorMessage = (errorCode: string) => {
+  switch (errorCode) {
+    case 'auth/invalid-email':
+      return 'Lütfen geçerli bir e-posta adresi girin.';
+    case 'auth/user-disabled':
+      return 'Bu kullanıcı hesabı devre dışı bırakılmıştır.';
+    case 'auth/user-not-found':
+    case 'auth/invalid-credential':
+      return 'E-posta adresi veya şifre hatalı.';
+    case 'auth/wrong-password':
+      return 'Girilen şifre yanlış.';
+    case 'auth/email-already-in-use':
+      return 'Bu e-posta adresi zaten başka bir hesap tarafından kullanılıyor.';
+    case 'auth/weak-password':
+      return 'Şifre çok zayıf. Lütfen en az 6 karakterli daha güçlü bir şifre seçin.';
+    case 'auth/too-many-requests':
+        return 'Çok fazla başarısız giriş denemesi yapıldı. Lütfen daha sonra tekrar deneyin.';
+    default:
+      return 'Bilinmeyen bir hata oluştu. Lütfen tekrar deneyin.';
+  }
+};
+
+
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -53,7 +76,7 @@ export default function LoginPage() {
       toast({
         variant: 'destructive',
         title: 'Giriş Başarısız',
-        description: error.message.includes('auth/invalid-credential') ? 'E-posta veya şifre hatalı.' : error.message,
+        description: getFirebaseAuthErrorMessage(error.code),
       });
     } finally {
       setLoading(false);
@@ -70,7 +93,7 @@ export default function LoginPage() {
       toast({
         variant: 'destructive',
         title: 'Kayıt Başarısız',
-        description: error.message.includes('auth/email-already-in-use') ? 'Bu e-posta adresi zaten kullanılıyor.' : error.message,
+        description: getFirebaseAuthErrorMessage(error.code),
       });
     } finally {
       setLoading(false);

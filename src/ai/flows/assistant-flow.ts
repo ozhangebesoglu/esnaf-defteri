@@ -157,6 +157,12 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
     return { textResponse: finalLlmResponse.text };
 
   } else {
+    // Security check to prevent hallucinated confirmations when no tool is called.
+    if (/tamam|ekledim|hallettim|kaydedildi|silindi/i.test(llmResponse.text)) {
+      return {
+        textResponse: "İşlemi yapamadım çünkü bu komut için bir araç çalıştırılmadı. Lütfen isteğinizi daha net belirtir misiniz? Örneğin: 'Ahmet Yılmaz'a 250 TL borç ekle.'",
+      };
+    }
     return { textResponse: llmResponse.text };
   }
 }

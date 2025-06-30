@@ -549,7 +549,7 @@ export default function DashboardPage() {
   const handleDayClose = async (data: { countedCash: number; countedVisa: number }) => {
     if(!user) return;
     const cashDifference = data.countedCash - expectedCash;
-    const newEntry: Omit<CashboxHistory, 'id'|'userId'> = {
+    const newEntry = {
         date: new Date().toISOString(),
         userId: user.uid,
         openingCash,

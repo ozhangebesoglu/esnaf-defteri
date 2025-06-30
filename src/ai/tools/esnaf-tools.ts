@@ -3,20 +3,16 @@
  */
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDoc } from "firebase/firestore";
+import { adminDb } from '@/lib/firebase-admin';
 import type { Customer, Product, Order, Expense, StockAdjustment } from '@/lib/types';
 
 
 // Helper to find a resource by name, used internally by tools
 const findResourceByName = async <T extends { name: string, userId: string }>(collectionName: string, name: string, userId: string): Promise<(T & {id: string}) | null> => {
   const lowerCaseName = name.toLowerCase();
-  const q = query(
-    collection(db, collectionName), 
-    where("userId", "==", userId)
-  );
+  const q = adminDb.collection(collectionName).where("userId", "==", userId);
   
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await q.get();
   if (querySnapshot.empty) return null;
 
   // Manual client-side filtering for case-insensitivity
@@ -32,9 +28,9 @@ const findResourceByName = async <T extends { name: string, userId: string }>(co
 
 // Helper to find a resource by ID
 const findResourceById = async (collectionName: string, id: string): Promise<any | null> => {
-    const docRef = doc(db, collectionName, id);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+    const docRef = adminDb.collection(collectionName).doc(id);
+    const docSnap = await docRef.get();
+    return docSnap.exists ? { id: docSnap.id, ...docSnap.data() } : null;
 }
 
 
@@ -65,8 +61,8 @@ export const addSaleTool = ai.defineTool(
       return `"${customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin veya bu isimde yeni bir müşteri eklemek isterseniz belirtin.`;
     }
 
-    const batch = writeBatch(db);
-    const newOrderRef = doc(collection(db, 'orders'));
+    const batch = adminDb.batch();
+    const newOrderRef = adminDb.collection('orders').doc();
     batch.set(newOrderRef, {
       userId,
       customerId: customer.id,
@@ -78,7 +74,7 @@ export const addSaleTool = ai.defineTool(
       total,
     });
 
-    const customerRef = doc(db, "customers", customer.id);
+    const customerRef = adminDb.collection("customers").doc(customer.id);
     batch.update(customerRef, { balance: customer.balance + total });
     
     await batch.commit();
@@ -99,7 +95,7 @@ export const addCashSaleTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ description, total, userId, paymentMethod }) => {
-     await addDoc(collection(db, 'orders'), {
+     await adminDb.collection('orders').add({
       userId,
       customerId: 'CASH_SALE',
       customerName: 'Peşin Satış',
@@ -139,8 +135,8 @@ export const addPaymentTool = ai.defineTool(
       return `"${customerName}" adında bir müşteri bulamadım. Lütfen ismi kontrol edin.`;
     }
 
-    const batch = writeBatch(db);
-    const newPaymentRef = doc(collection(db, 'orders'));
+    const batch = adminDb.batch();
+    const newPaymentRef = adminDb.collection('orders').doc();
     batch.set(newPaymentRef, {
       userId,
       customerId: customer.id,
@@ -153,7 +149,7 @@ export const addPaymentTool = ai.defineTool(
       paymentMethod,
     });
 
-    const customerRef = doc(db, "customers", customer.id);
+    const customerRef = adminDb.collection("customers").doc(customer.id);
     batch.update(customerRef, { balance: customer.balance - total });
 
     await batch.commit();
@@ -176,7 +172,7 @@ export const addExpenseTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ description, amount, category, userId }) => {
-    await addDoc(collection(db, 'expenses'), {
+    await adminDb.collection('expenses').add({
       userId,
       date: new Date().toISOString(),
       description,
@@ -226,8 +222,8 @@ export const addStockAdjustmentTool = ai.defineTool(
         return `İşlem iptal edildi. ${product.name} ürününün mevcut stoğu (${product.stock}) bu işlem için yetersiz. Stoğu ${Math.abs(quantity)} kadar azaltamazsınız.`;
     }
 
-    const batch = writeBatch(db);
-    const newAdjRef = doc(collection(db, 'stockAdjustments'));
+    const batch = adminDb.batch();
+    const newAdjRef = adminDb.collection('stockAdjustments').doc();
     batch.set(newAdjRef, {
       userId,
       productId: product.id,
@@ -238,7 +234,7 @@ export const addStockAdjustmentTool = ai.defineTool(
       category,
     });
 
-    const productRef = doc(db, "products", product.id);
+    const productRef = adminDb.collection("products").doc(product.id);
     batch.update(productRef, { stock: newStock });
 
     await batch.commit();
@@ -265,8 +261,8 @@ export const addCustomerTool = ai.defineTool(
       return `"${customerName}" adında bir müşteri zaten mevcut. Farklı bir isimle tekrar deneyin.`;
     }
     
-    const batch = writeBatch(db);
-    const newCustomerRef = doc(collection(db, 'customers'));
+    const batch = adminDb.batch();
+    const newCustomerRef = adminDb.collection('customers').doc();
     batch.set(newCustomerRef, { 
         userId,
         name: customerName, 
@@ -275,7 +271,7 @@ export const addCustomerTool = ai.defineTool(
     });
 
     if (initialDebt && initialDebt > 0) {
-        const newOrderRef = doc(collection(db, 'orders'));
+        const newOrderRef = adminDb.collection('orders').doc();
         batch.set(newOrderRef, {
             userId,
             customerId: newCustomerRef.id,
@@ -316,11 +312,11 @@ export const deleteCustomerTool = ai.defineTool(
         return `"${customerName}" adında bir müşteri bulamadım.`;
     }
 
-    const batch = writeBatch(db);
-    batch.delete(doc(db, 'customers', customer.id));
+    const batch = adminDb.batch();
+    batch.delete(adminDb.collection('customers').doc(customer.id));
 
-    const ordersQuery = query(collection(db, 'orders'), where("userId", "==", userId), where("customerId", "==", customer.id));
-    const ordersSnapshot = await getDocs(ordersQuery);
+    const ordersQuery = adminDb.collection('orders').where("userId", "==", userId).where("customerId", "==", customer.id);
+    const ordersSnapshot = await ordersQuery.get();
     ordersSnapshot.forEach(doc => batch.delete(doc.ref));
 
     await batch.commit();
@@ -344,7 +340,7 @@ export const deleteProductTool = ai.defineTool(
         return `"${productName}" adında bir ürün bulamadım.`;
      }
      
-     await deleteDoc(doc(db, 'products', product.id));
+     await adminDb.collection('products').doc(product.id).delete();
      // Note: Associated stock adjustments are not deleted to preserve history, but could be.
      return `${product.name} adlı ürün başarıyla silindi.`;
   }
@@ -361,21 +357,21 @@ export const deleteSaleTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ saleId, userId }) => {
-      const saleRef = doc(db, 'orders', saleId);
-      const saleSnap = await getDoc(saleRef);
+      const saleRef = adminDb.collection('orders').doc(saleId);
+      const saleSnap = await saleRef.get();
 
-      if (!saleSnap.exists() || saleSnap.data().userId !== userId) {
+      if (!saleSnap.exists || saleSnap.data()!.userId !== userId) {
           return `"${saleId}" numaralı bir satış veya ödeme bulamadım.`;
       }
       const sale = saleSnap.data() as Order;
 
-      const batch = writeBatch(db);
+      const batch = adminDb.batch();
       batch.delete(saleRef);
 
       if (sale.customerId && sale.customerId !== 'CASH_SALE') {
-          const customerRef = doc(db, 'customers', sale.customerId);
-          const customerSnap = await getDoc(customerRef);
-          if (customerSnap.exists()) {
+          const customerRef = adminDb.collection('customers').doc(sale.customerId);
+          const customerSnap = await customerRef.get();
+          if (customerSnap.exists) {
               const customer = customerSnap.data() as Customer;
               batch.update(customerRef, { balance: customer.balance - sale.total });
           }
@@ -397,15 +393,15 @@ export const deleteExpenseTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ expenseId, userId }) => {
-      const expenseRef = doc(db, 'expenses', expenseId);
-      const expenseSnap = await getDoc(expenseRef);
+      const expenseRef = adminDb.collection('expenses').doc(expenseId);
+      const expenseSnap = await expenseRef.get();
 
-       if (!expenseSnap.exists() || expenseSnap.data().userId !== userId) {
+       if (!expenseSnap.exists || expenseSnap.data()!.userId !== userId) {
           return `"${expenseId}" numaralı bir gider bulamadım.`;
       }
       
       const expense = expenseSnap.data() as Expense;
-      await deleteDoc(expenseRef);
+      await expenseRef.delete();
       return `'${expense.description}' başlıklı gider kaydı başarıyla silindi.`;
   }
 );
@@ -423,21 +419,21 @@ export const deleteStockAdjustmentTool = ai.defineTool(
     outputSchema: ToolOutputSchema,
   },
   async ({ adjustmentId, userId }) => {
-      const adjRef = doc(db, 'stockAdjustments', adjustmentId);
-      const adjSnap = await getDoc(adjRef);
+      const adjRef = adminDb.collection('stockAdjustments').doc(adjustmentId);
+      const adjSnap = await adjRef.get();
 
-       if (!adjSnap.exists() || adjSnap.data().userId !== userId) {
+       if (!adjSnap.exists || adjSnap.data()!.userId !== userId) {
           return `"${adjustmentId}" numaralı bir stok hareketi bulamadım.`;
       }
       const adj = adjSnap.data() as StockAdjustment;
 
-      const batch = writeBatch(db);
+      const batch = adminDb.batch();
       batch.delete(adjRef);
 
       if (adj.productId) {
-          const productRef = doc(db, 'products', adj.productId);
-          const productSnap = await getDoc(productRef);
-          if (productSnap.exists()) {
+          const productRef = adminDb.collection('products').doc(adj.productId);
+          const productSnap = await productRef.get();
+          if (productSnap.exists) {
               const product = productSnap.data() as Product;
               batch.update(productRef, { stock: product.stock - adj.quantity });
           }

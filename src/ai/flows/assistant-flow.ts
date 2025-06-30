@@ -6,8 +6,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import {
   addPaymentTool,
   addSaleTool,
@@ -66,16 +65,16 @@ const systemPrompt = `Sen, bir kasap dükkanı için geliştirilmiş "Esnaf Deft
 // Geçmiş sohbeti Firestore’dan çek
 export async function getChatHistory(userId: string): Promise<Message[]> {
   if (!userId) return [];
-  const historyRef = doc(db, 'chatHistories', userId);
-  const historySnap = await getDoc(historyRef);
+  const historyRef = adminDb.collection('chatHistories').doc(userId);
+  const historySnap = await historyRef.get();
 
-  if (historySnap.exists()) {
+  if (historySnap.exists) {
     const data = historySnap.data() as ChatHistory;
     if (data && Array.isArray(data.messages)) {
         return data.messages;
     }
      console.warn(`Corrupt chat history for user ${userId}, starting fresh.`);
-     await setDoc(historyRef, { userId, messages: [] });
+     await historyRef.set({ userId, messages: [] });
      return [];
   }
 
@@ -114,7 +113,7 @@ const toGenkitMessages = (history: Message[]): MessageData[] => {
 // Ana AI chat işleyicisi
 export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<ChatWithAssistantOutput> {
   const { newMessage, userId } = input;
-  const historyRef = doc(db, 'chatHistories', userId);
+  const historyRef = adminDb.collection('chatHistories').doc(userId);
 
   let chatHistory = await getChatHistory(userId);
   chatHistory.push({ role: 'user', content: newMessage });
@@ -168,12 +167,12 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
 
     const finalResponseText = finalLlmResponse.text;
     chatHistory.push({ role: 'model', content: finalResponseText });
-    await setDoc(historyRef, { userId, messages: chatHistory });
+    await historyRef.set({ userId, messages: chatHistory });
     return { textResponse: finalResponseText };
   } else {
     const finalResponseText = llmResponse.text;
     chatHistory.push({ role: 'model', content: finalResponseText });
-    await setDoc(historyRef, { userId, messages: chatHistory });
+    await historyRef.set({ userId, messages: chatHistory });
     return { textResponse: finalResponseText };
   }
 }

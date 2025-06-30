@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -103,6 +102,11 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
     tools: allTools,
   });
 
+  if (!llmResponse.choices || llmResponse.choices.length === 0) {
+    console.error("AI response invalid or blocked", llmResponse);
+    return { textResponse: "Üzgünüm, bir sorun oluştu ve isteğinizi işleyemedim. Lütfen daha sonra tekrar deneyin." };
+  }
+
   const modelChoice = llmResponse.choices[0];
   const toolRequests = modelChoice.toolRequests;
 
@@ -145,6 +149,11 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
       tools: allTools,
     });
     
+    if (!finalLlmResponse.choices || finalLlmResponse.choices.length === 0) {
+        console.error("Final AI response invalid or blocked", finalLlmResponse);
+        return { textResponse: "Araçları kullandıktan sonra bir yanıt oluşturamadım. Lütfen tekrar deneyin." };
+    }
+
     return { textResponse: finalLlmResponse.text };
 
   } else {

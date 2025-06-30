@@ -1,4 +1,3 @@
-import type { MessageData } from 'genkit';
 
 export type FirestoreDoc = {
     id: string;
@@ -88,8 +87,4 @@ export type Staff = FirestoreDoc & {
 export type Message = {
   role: 'user' | 'model' | 'tool';
   content: any; // string for user/model text, complex object for tool calls/responses
-};
-
-export type ChatHistory = FirestoreDoc & {
-  history: MessageData[];
 };

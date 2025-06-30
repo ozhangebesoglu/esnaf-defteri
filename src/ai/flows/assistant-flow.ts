@@ -2,7 +2,7 @@
 'use server';
 
 /**
- * @fileOverview A stateful conversational AI assistant for the Esnaf Defteri app that can understand and execute commands by calling tools that interact with the database. It remembers conversation history.
+ * @fileOverview A stateless conversational AI assistant for the Esnaf Defteri app that can understand and execute commands by calling tools. It does not remember conversation history.
  */
 
 import { ai } from '@/ai/genkit';
@@ -21,8 +21,6 @@ import {
   deleteStockAdjustmentTool,
 } from '@/ai/tools/esnaf-tools';
 import type { MessageData, ToolResponsePart } from 'genkit';
-import { adminDb } from '@/lib/firebase-admin';
-import type { ChatHistory } from '@/lib/types';
 
 // All available tools
 const allTools = [
@@ -93,55 +91,21 @@ Onların dilinden konuş, işi hallet, kafa karıştırma. Araçsız asla işlem
 ;
 
 
-// Helper functions to get and save chat history
-async function getChatHistory(userId: string): Promise<MessageData[]> {
-  if (!userId) return [];
-  const historyRef = adminDb.collection('chatHistories').doc(userId);
-  const historySnap = await historyRef.get();
-
-  if (historySnap.exists) {
-    const data = historySnap.data() as ChatHistory;
-    // Basic validation to prevent crash on corrupted data
-    if (data && Array.isArray(data.history)) {
-       return data.history;
-    }
-  }
-  return []; // Return empty history if not found or corrupted
-}
-
-async function saveChatHistory(userId: string, history: MessageData[]): Promise<void> {
-  if (!userId) return;
-  const historyRef = adminDb.collection('chatHistories').doc(userId);
-  await historyRef.set({ userId, history });
-}
-
-
-// Main AI chat handler (stateful version)
+// Main AI chat handler (stateless version)
 export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<ChatWithAssistantOutput> {
   const { newMessage, userId } = input;
 
-  // 1. Get existing history from Firestore
-  const history = await getChatHistory(userId);
+  const history: MessageData[] = [{ role: 'user', content: [{ text: newMessage }] }];
 
-  // 2. Add the new user message to the history for this turn
-  history.push({ role: 'user', content: [{ text: newMessage }] });
-  
-  // Performance/Cost Optimization: only use the last 20 messages for the prompt
-  const trimmedHistory = history.slice(-20);
-
-  // 3. Generate a response, which may include tool requests
   const llmResponse = await ai.generate({
     system: systemPrompt,
-    messages: trimmedHistory,
+    messages: history,
     tools: allTools,
   });
 
   const modelChoice = llmResponse.choices[0];
-  history.push(modelChoice.message); // Add the model's full response (text or tool_request) to history
-
   const toolRequests = modelChoice.toolRequests;
 
-  // 4. Handle tool requests if the model generated any
   if (toolRequests && toolRequests.length > 0) {
     const toolResponses: ToolResponsePart[] = [];
     
@@ -149,7 +113,6 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
       const tool = allTools.find(t => t.name === toolRequest.name);
       
       if (tool) {
-        // IMPORTANT: Add the server-side userId to the input before calling the tool
         const toolInputWithUser = { ...toolRequest.input, userId };
         const output = await tool(toolInputWithUser);
         
@@ -173,30 +136,18 @@ export async function chatWithAssistant(input: ChatWithAssistantInput): Promise<
       }
     }
     
-    // 5. Add tool execution results to history
+    history.push(modelChoice.message);
     history.push({ role: 'tool', content: toolResponses });
 
-    // 6. Call the model again with the tool results to get a final natural language response
     const finalLlmResponse = await ai.generate({
       system: systemPrompt,
-      messages: history, // Send full history for the final turn to maintain context for the AI
+      messages: history,
       tools: allTools,
     });
     
-    history.push(finalLlmResponse.choices[0].message); // Add the final text response to history
-    
-    const finalResponseText = finalLlmResponse.text;
-
-    // 7. Save the complete, updated history and return the response
-    await saveChatHistory(userId, history);
-    return { textResponse: finalResponseText };
+    return { textResponse: finalLlmResponse.text };
 
   } else {
-    // No tools were called. The model's response is the final response.
-    const finalResponseText = llmResponse.text;
-    
-    // Save the history (user message + model response) and return
-    await saveChatHistory(userId, history);
-    return { textResponse: finalResponseText };
+    return { textResponse: llmResponse.text };
   }
 }

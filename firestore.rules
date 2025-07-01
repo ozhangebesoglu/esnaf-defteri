@@ -3,18 +3,16 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Kural 1: Her kullanıcının kendi altındaki tüm belgelere
-    // (customers, products, orders vb.) tam erişimini sağlar.
-    // Bu, bir kullanıcının başka bir kullanıcının verisini görmesini engeller.
+    // Kullanıcıların yalnızca kendi verilerine erişmesine izin ver.
+    // Bu kural, bir kullanıcının /users/{userId} altındaki tüm alt koleksiyonlara
+    // (customers, products, orders vb.) erişebilmesini sağlar.
     match /users/{userId}/{document=**} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Kural 2: Yapay zeka sohbet geçmişi koleksiyonu için kurallar.
-    // Bir kullanıcı sadece kendi sohbet geçmişini okuyabilir ve yazabilir.
-    // Doküman kimliği, kullanıcı kimliği ile aynı olmalıdır.
+    // Sohbet geçmişi koleksiyonu için kurallar.
     match /chatHistories/{userId} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

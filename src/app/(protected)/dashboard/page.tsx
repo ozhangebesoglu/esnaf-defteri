@@ -768,7 +768,13 @@ export default function DashboardPage() {
 
     switch (activeView) {
       case 'anasayfa':
-        return <Dashboard customers={customers} expenses={expenses} salesData={salesData} isMobile={isMobile} />;
+        return <Dashboard 
+                  customers={customers} 
+                  expenses={expenses} 
+                  salesData={salesData} 
+                  isMobile={isMobile}
+                  onNavigate={handleViewChange} 
+                />;
       case 'urun-yonetimi':
         return <Inventory 
                   products={products} 
@@ -842,7 +848,13 @@ export default function DashboardPage() {
       case 'yapay-zeka':
         return <AiChat />;
       default:
-        return <Dashboard customers={customers} expenses={expenses} salesData={salesData} isMobile={isMobile} />;
+        return <Dashboard 
+                  customers={customers} 
+                  expenses={expenses} 
+                  salesData={salesData} 
+                  isMobile={isMobile}
+                  onNavigate={handleViewChange}
+                />;
     }
   };
 

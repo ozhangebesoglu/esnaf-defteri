@@ -50,6 +50,7 @@ import Campaigns from '@/components/campaigns';
 import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert, Supplier, Staff as StaffType, Sale } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
 
 type View = 
   'anasayfa' | 
@@ -144,40 +145,146 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
     
+    console.log('Starting data fetch for user:', user.uid);
     setLoadingData(true);
-    const collections = {
-        customers: setCustomers,
-        products: setProducts,
-        orders: setOrders,
-        expenses: setExpenses,
-        stockAdjustments: setStockAdjustments,
-        cashboxHistory: setCashboxHistory,
-        suppliers: setSuppliers,
-        staff: setStaff,
+
+    const setupDataListeners = async () => {
+      try {
+        // First, try to create sample data if user has no data
+        const customersQuery = query(collection(db, 'users', user.uid, 'customers'));
+        const customersSnapshot = await getDocs(customersQuery);
+        
+        if (customersSnapshot.empty) {
+          console.log('User has no data, creating sample data...');
+          await createSampleData();
+        } else {
+          console.log(`User has ${customersSnapshot.docs.length} customers`);
+        }
+
+        // Now set up real-time listeners
+        const collections = {
+            customers: setCustomers,
+            products: setProducts,
+            orders: setOrders,
+            expenses: setExpenses,
+            stockAdjustments: setStockAdjustments,
+            cashboxHistory: setCashboxHistory,
+            suppliers: setSuppliers,
+            staff: setStaff,
+        };
+
+        const unsubscribes: (() => void)[] = [];
+        let loadedCollections = 0;
+        const totalCollections = Object.keys(collections).length;
+
+        const checkAllLoaded = () => {
+          loadedCollections++;
+          console.log(`Loaded ${loadedCollections}/${totalCollections} collections`);
+          if (loadedCollections === totalCollections) {
+            setLoadingData(false);
+            console.log('All collections loaded successfully');
+          }
+        };
+
+        Object.entries(collections).forEach(([collectionName, setState]) => {
+            try {
+                console.log(`Setting up listener for ${collectionName}`);
+                const q = query(collection(db, 'users', user.uid, collectionName));
+                const unsubscribe = onSnapshot(q, (querySnapshot) => {
+                    console.log(`${collectionName}: Got ${querySnapshot.docs.length} documents`);
+                    const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+                    if (collectionName === 'orders' || collectionName === 'expenses' || collectionName === 'cashboxHistory' || collectionName === 'stockAdjustments') {
+                      items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    }
+                    setState(items);
+                    checkAllLoaded();
+                }, (error) => {
+                    console.error(`Error fetching ${collectionName}: `, error);
+                    toast({
+                        variant: "destructive",
+                        title: "Veri Yükleme Hatası",
+                        description: `"${collectionName}" verileri yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.`,
+                    });
+                    checkAllLoaded();
+                });
+                unsubscribes.push(unsubscribe);
+            } catch (error) {
+                console.error(`Error setting up listener for ${collectionName}: `, error);
+                toast({
+                    variant: "destructive",
+                    title: "Bağlantı Hatası",
+                    description: `"${collectionName}" için bağlantı kurulamadı. Lütfen internet bağlantınızı kontrol edin.`,
+                });
+                checkAllLoaded();
+            }
+        });
+
+        // Return cleanup function
+        return () => {
+          console.log('Cleaning up listeners');
+          unsubscribes.forEach(unsub => unsub());
+        };
+
+      } catch (error) {
+        console.error('Error in setupDataListeners:', error);
+        setLoadingData(false);
+        toast({
+          variant: "destructive",
+          title: "Veri Yükleme Hatası",
+          description: "Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.",
+        });
+        return () => {};
+      }
     };
 
-    const unsubscribes = Object.entries(collections).map(([collectionName, setState]) => {
-        const q = query(collection(db, 'users', user.uid, collectionName));
-        return onSnapshot(q, (querySnapshot) => {
-            const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-            if (collectionName === 'orders' || collectionName === 'expenses' || collectionName === 'cashboxHistory' || collectionName === 'stockAdjustments') {
-              items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            }
-            setState(items);
-        }, (error) => {
-            console.error(`Error fetching ${collectionName}: `, error);
-            toast({
-                variant: "destructive",
-                title: "Veri Yükleme Hatası",
-                description: `"${collectionName}" verileri yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.`,
-            });
+    const createSampleData = async () => {
+      try {
+        console.log('Creating sample data...');
+        const batch = writeBatch(db);
+        
+        // Add sample customer
+        const customerRef = doc(collection(db, 'users', user.uid, 'customers'));
+        batch.set(customerRef, {
+          name: 'Örnek Müşteri',
+          email: 'ornek@musteri.com',
+          balance: 0
         });
-    });
-    
-    setLoadingData(false);
 
-    // Cleanup listeners on component unmount
-    return () => unsubscribes.forEach(unsub => unsub());
+        // Add sample product
+        const productRef = doc(collection(db, 'users', user.uid, 'products'));
+        batch.set(productRef, {
+          name: 'Kıyma',
+          type: 'beef',
+          stock: 10,
+          price: 150,
+          cost: 120,
+          lowStockThreshold: 5
+        });
+
+        // Add sample expense
+        const expenseRef = doc(collection(db, 'users', user.uid, 'expenses'));
+        batch.set(expenseRef, {
+          date: new Date().toISOString(),
+          description: 'Örnek Gider',
+          amount: 100,
+          category: 'Diğer'
+        });
+
+        await batch.commit();
+        console.log('Sample data created successfully');
+      } catch (error) {
+        console.error('Error creating sample data:', error);
+        throw error;
+      }
+    };
+
+    // Start the data setup process
+    const cleanup = setupDataListeners();
+    
+    // Return cleanup function
+    return () => {
+      cleanup.then(cleanupFn => cleanupFn());
+    };
 
   }, [user, toast]);
 
@@ -248,10 +355,38 @@ export default function DashboardPage() {
 
   const showGenericErrorToast = () => {
     toast({
-        variant: "destructive",
-        title: "İşlem Başarısız",
-        description: "Bir hata oluştu. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.",
+      variant: "destructive",
+      title: "Hata",
+      description: "Bir hata oluştu. Lütfen tekrar deneyin.",
     });
+  };
+
+  // Test Firebase connection
+  const testFirebaseConnection = async () => {
+    try {
+      console.log('Testing Firebase connection...');
+      const testRef = doc(db, 'users', user!.uid, 'test', 'connection');
+      await updateDoc(testRef, { timestamp: new Date().toISOString() });
+      console.log('Firebase connection successful');
+      return true;
+    } catch (error) {
+      console.error('Firebase connection failed:', error);
+      return false;
+    }
+  };
+
+  // Test function to check if collections exist
+  const testCollections = async () => {
+    try {
+      const collections = ['customers', 'products', 'orders', 'expenses'];
+      for (const collectionName of collections) {
+        const q = query(collection(db, 'users', user!.uid, collectionName));
+        const snapshot = await getDocs(q);
+        console.log(`${collectionName}: ${snapshot.docs.length} documents`);
+      }
+    } catch (error) {
+      console.error('Error testing collections:', error);
+    }
   };
 
   // Customers
@@ -999,7 +1134,52 @@ export default function DashboardPage() {
           <SidebarTrigger className="md:hidden" />
           <h1 className="text-xl font-headline font-semibold capitalize">{viewTitles[activeView]}</h1>
         </header>
-        <main className="flex-1 p-4 md:p-6">{renderView()}</main>
+        <main className="flex-1 p-4 md:p-6">
+          {loadingData ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="text-muted-foreground">Veriler yükleniyor...</p>
+                <div className="text-xs text-muted-foreground">
+                  Kullanıcı ID: {user?.uid}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Debug Panel - Remove in production */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <h3 className="font-semibold text-yellow-800 mb-2">Debug Bilgileri</h3>
+                  <div className="text-sm text-yellow-700 space-y-1 mb-3">
+                    <div>Kullanıcı ID: {user?.uid}</div>
+                    <div>Müşteri Sayısı: {customers.length}</div>
+                    <div>Ürün Sayısı: {products.length}</div>
+                    <div>Satış Sayısı: {orders.length}</div>
+                    <div>Gider Sayısı: {expenses.length}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={testFirebaseConnection}
+                    >
+                      Firebase Bağlantısını Test Et
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={testCollections}
+                    >
+                      Koleksiyonları Test Et
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {renderView()}
+            </>
+          )}
+        </main>
       </SidebarInset>
     </>
   );

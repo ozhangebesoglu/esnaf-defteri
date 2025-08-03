@@ -46,6 +46,7 @@ import SalesTransactions from '@/components/sales-transactions';
 import Suppliers from '@/components/suppliers';
 import Staff from '@/components/staff';
 import Campaigns from '@/components/campaigns';
+import DebugPanel from '@/components/debug-panel';
 
 import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert, Supplier, Staff as StaffType, Sale } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
@@ -63,7 +64,8 @@ type View =
   'raporlar' |
   'kasa' | 
   'uyarilar' | 
-  'yapay-zeka';
+  'yapay-zeka' |
+  'debug';
 
 const viewTitles: Record<View, string> = {
   anasayfa: 'Anasayfa',
@@ -77,7 +79,8 @@ const viewTitles: Record<View, string> = {
   raporlar: 'Raporlar',
   kasa: 'Kasa Yönetimi',
   uyarilar: 'Uyarılar',
-  'yapay-zeka': 'Yapay Zeka Asistanı'
+  'yapay-zeka': 'Yapay Zeka Asistanı',
+  'debug': 'Debug Panel'
 };
 
 const isToday = (date: string | Date) => {
@@ -156,22 +159,34 @@ export default function DashboardPage() {
         staff: setStaff,
     };
 
-    const unsubscribes = Object.entries(collections).map(([collectionName, setState]) => {
-        const q = query(collection(db, 'users', user.uid, collectionName));
-        return onSnapshot(q, (querySnapshot) => {
-            const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-            if (collectionName === 'orders' || collectionName === 'expenses' || collectionName === 'cashboxHistory' || collectionName === 'stockAdjustments') {
-              items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            }
-            setState(items);
-        }, (error) => {
-            console.error(`Error fetching ${collectionName}: `, error);
+    const unsubscribes: (() => void)[] = [];
+
+    Object.entries(collections).forEach(([collectionName, setState]) => {
+        try {
+            const q = query(collection(db, 'users', user.uid, collectionName));
+            const unsubscribe = onSnapshot(q, (querySnapshot) => {
+                const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+                if (collectionName === 'orders' || collectionName === 'expenses' || collectionName === 'cashboxHistory' || collectionName === 'stockAdjustments') {
+                  items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                }
+                setState(items);
+            }, (error) => {
+                console.error(`Error fetching ${collectionName}: `, error);
+                toast({
+                    variant: "destructive",
+                    title: "Veri Yükleme Hatası",
+                    description: `"${collectionName}" verileri yüklenirken bir hata oluştu: ${error.message}`,
+                });
+            });
+            unsubscribes.push(unsubscribe);
+        } catch (error: any) {
+            console.error(`Error setting up listener for ${collectionName}: `, error);
             toast({
                 variant: "destructive",
-                title: "Veri Yükleme Hatası",
-                description: `"${collectionName}" verileri yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.`,
+                title: "Bağlantı Hatası",
+                description: `"${collectionName}" için bağlantı kurulamadı: ${error.message}`,
             });
-        });
+        }
     });
     
     setLoadingData(false);
@@ -847,6 +862,8 @@ export default function DashboardPage() {
         return <Monitoring alerts={alerts} />;
       case 'yapay-zeka':
         return <AiChat />;
+      case 'debug':
+        return <DebugPanel />;
       default:
         return <Dashboard 
                   customers={customers} 
@@ -989,6 +1006,16 @@ export default function DashboardPage() {
               >
                 <Sparkles />
                 <span>Yapay Zeka</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => handleViewChange('debug')}
+                isActive={activeView === 'debug'}
+                tooltip="Debug Panel"
+              >
+                <AlertCircle />
+                <span>Debug</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

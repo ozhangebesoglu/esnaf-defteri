@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence, connectFirestoreEmulator } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBkBX6UqgQuGYzHpkjUjT9UwuEdAGKZ7QU",
@@ -11,20 +11,44 @@ const firebaseConfig = {
   appId: "1:877997229124:web:2f74cea527e247591ba811"
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Initialize Firebase
+let app;
+try {
+  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+} catch (error) {
+  console.error('Firebase initialization error:', error);
+  throw error;
+}
 
-if (typeof window !== 'undefined') {
-    try {
-        enableIndexedDbPersistence(db);
-    } catch (err: any) {
-        if (err.code === 'failed-precondition') {
-            console.warn('Firebase persistence failed: multiple tabs open.');
-        } else if (err.code === 'unimplemented') {
-            console.warn('Firebase persistence failed: browser does not support it.');
-        }
-    }
+// Initialize Auth
+let auth;
+try {
+  auth = getAuth(app);
+} catch (error) {
+  console.error('Firebase Auth initialization error:', error);
+  throw error;
+}
+
+// Initialize Firestore
+let db;
+try {
+  db = getFirestore(app);
+  
+  // Enable offline persistence
+  if (typeof window !== 'undefined') {
+    enableIndexedDbPersistence(db).catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn('Firebase persistence failed: multiple tabs open.');
+      } else if (err.code === 'unimplemented') {
+        console.warn('Firebase persistence failed: browser does not support it.');
+      } else {
+        console.error('Firebase persistence error:', err);
+      }
+    });
+  }
+} catch (error) {
+  console.error('Firestore initialization error:', error);
+  throw error;
 }
 
 export { app, auth, db };

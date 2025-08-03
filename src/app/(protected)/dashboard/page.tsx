@@ -46,6 +46,7 @@ import SalesTransactions from '@/components/sales-transactions';
 import Suppliers from '@/components/suppliers';
 import Staff from '@/components/staff';
 import Campaigns from '@/components/campaigns';
+import { Button } from '@/components/ui/button';
 
 import type { Customer, Order, Product, Expense, StockAdjustment, CashboxHistory, MonitoringAlert, Supplier, Staff as StaffType, Sale } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
@@ -96,6 +97,83 @@ export default function DashboardPage() {
   
   const [activeView, setActiveView] = useState<View>('anasayfa');
   const [loadingData, setLoadingData] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [showDebug, setShowDebug] = useState(false);
+
+  // Debug info for troubleshooting
+  useEffect(() => {
+    if (user) {
+      setDebugInfo({
+        userId: user.uid,
+        userEmail: user.email,
+        isAuthenticated: !!user,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [user]);
+
+  // Test Firebase connection
+  const testFirebaseConnection = async () => {
+    if (!user) return;
+    
+    try {
+      console.log('Testing Firebase connection...');
+      
+      // Test basic read operation
+      const testDoc = await getDocs(collection(db, 'users', user.uid, 'customers'));
+      console.log('Firebase connection successful. Found', testDoc.docs.length, 'customers');
+      
+      toast({
+        title: "Bağlantı Testi",
+        description: `Firebase bağlantısı başarılı. ${testDoc.docs.length} müşteri bulundu.`,
+      });
+    } catch (error) {
+      console.error('Firebase connection test failed:', error);
+      toast({
+        variant: "destructive",
+        title: "Bağlantı Hatası",
+        description: "Firebase bağlantısı başarısız. Lütfen internet bağlantınızı kontrol edin.",
+      });
+    }
+  };
+
+  // Add test data
+  const addTestData = async () => {
+    if (!user) return;
+    
+    try {
+      console.log('Adding test data...');
+      
+      // Add test customer
+      await addDoc(collection(db, 'users', user.uid, 'customers'), {
+        name: 'Test Müşteri',
+        email: 'test@example.com',
+        balance: 0
+      });
+      
+      // Add test product
+      await addDoc(collection(db, 'users', user.uid, 'products'), {
+        name: 'Test Ürün',
+        type: 'beef',
+        stock: 10,
+        price: 100,
+        cost: 80,
+        lowStockThreshold: 5
+      });
+      
+      toast({
+        title: "Test Verisi Eklendi",
+        description: "Test müşteri ve ürün başarıyla eklendi.",
+      });
+    } catch (error) {
+      console.error('Error adding test data:', error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Test verisi eklenirken hata oluştu.",
+      });
+    }
+  };
 
   // Firestore-backed state
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -145,6 +223,8 @@ export default function DashboardPage() {
     if (!user) return;
     
     setLoadingData(true);
+    console.log('Starting data fetch for user:', user.uid);
+    
     const collections = {
         customers: setCustomers,
         products: setProducts,
@@ -156,28 +236,72 @@ export default function DashboardPage() {
         staff: setStaff,
     };
 
-    const unsubscribes = Object.entries(collections).map(([collectionName, setState]) => {
-        const q = query(collection(db, 'users', user.uid, collectionName));
-        return onSnapshot(q, (querySnapshot) => {
-            const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-            if (collectionName === 'orders' || collectionName === 'expenses' || collectionName === 'cashboxHistory' || collectionName === 'stockAdjustments') {
-              items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            }
-            setState(items);
-        }, (error) => {
-            console.error(`Error fetching ${collectionName}: `, error);
+    let activeListeners = 0;
+    let completedListeners = 0;
+    const unsubscribes: (() => void)[] = [];
+
+    const checkAllListenersComplete = () => {
+        completedListeners++;
+        if (completedListeners === activeListeners) {
+            setLoadingData(false);
+            console.log('All data listeners completed');
+        }
+    };
+
+    Object.entries(collections).forEach(([collectionName, setState]) => {
+        activeListeners++;
+        console.log(`Setting up listener for ${collectionName}`);
+        
+        try {
+            const q = query(collection(db, 'users', user.uid, collectionName));
+            const unsubscribe = onSnapshot(q, 
+                (querySnapshot) => {
+                    console.log(`${collectionName} data received:`, querySnapshot.docs.length, 'documents');
+                    const items = querySnapshot.docs.map(doc => ({ 
+                        id: doc.id, 
+                        ...doc.data() 
+                    } as any));
+                    
+                    if (collectionName === 'orders' || collectionName === 'expenses' || collectionName === 'cashboxHistory' || collectionName === 'stockAdjustments') {
+                        items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    }
+                    
+                    setState(items);
+                    checkAllListenersComplete();
+                }, 
+                (error) => {
+                    console.error(`Error fetching ${collectionName}: `, error);
+                    toast({
+                        variant: "destructive",
+                        title: "Veri Yükleme Hatası",
+                        description: `"${collectionName}" verileri yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.`,
+                    });
+                    // Even on error, mark as completed to prevent infinite loading
+                    checkAllListenersComplete();
+                }
+            );
+            unsubscribes.push(unsubscribe);
+        } catch (error) {
+            console.error(`Error setting up listener for ${collectionName}:`, error);
             toast({
                 variant: "destructive",
-                title: "Veri Yükleme Hatası",
-                description: `"${collectionName}" verileri yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.`,
+                title: "Bağlantı Hatası",
+                description: `${collectionName} için bağlantı kurulamadı. Lütfen internet bağlantınızı kontrol edin.`,
             });
-        });
+            checkAllListenersComplete();
+        }
     });
-    
-    setLoadingData(false);
+
+    // If no listeners were set up, mark as complete
+    if (activeListeners === 0) {
+        setLoadingData(false);
+    }
 
     // Cleanup listeners on component unmount
-    return () => unsubscribes.forEach(unsub => unsub());
+    return () => {
+        console.log('Cleaning up data listeners');
+        unsubscribes.forEach(unsub => unsub());
+    };
 
   }, [user, toast]);
 
@@ -763,7 +887,83 @@ export default function DashboardPage() {
 
   const renderView = () => {
     if (loadingData) {
-      return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+      return (
+        <div className="flex flex-col h-full items-center justify-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-sm text-muted-foreground">Veriler yükleniyor...</p>
+          {debugInfo.userId && (
+            <div className="text-xs text-muted-foreground">
+              Kullanıcı ID: {debugInfo.userId}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Debug view for troubleshooting
+    if (process.env.NODE_ENV === 'development' && showDebug && Object.keys(debugInfo).length > 0) {
+      return (
+        <div className="space-y-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-semibold text-yellow-800">Debug Bilgileri</h3>
+              <Button 
+                onClick={() => setShowDebug(false)}
+                variant="outline"
+                size="sm"
+              >
+                Normal Görünüme Dön
+              </Button>
+            </div>
+            <div className="text-sm text-yellow-700 space-y-1">
+              <div>Kullanıcı ID: {debugInfo.userId}</div>
+              <div>E-posta: {debugInfo.userEmail}</div>
+              <div>Kimlik Doğrulama: {debugInfo.isAuthenticated ? 'Evet' : 'Hayır'}</div>
+              <div>Müşteri Sayısı: {customers.length}</div>
+              <div>Ürün Sayısı: {products.length}</div>
+              <div>Satış Sayısı: {orders.length}</div>
+              <div>Gider Sayısı: {expenses.length}</div>
+            </div>
+            <div className="mt-4 space-x-2">
+              <Button 
+                onClick={testFirebaseConnection}
+                variant="outline"
+                size="sm"
+              >
+                Firebase Bağlantısını Test Et
+              </Button>
+              <Button 
+                onClick={addTestData}
+                variant="outline"
+                size="sm"
+              >
+                Test Verisi Ekle
+              </Button>
+            </div>
+          </div>
+          
+          <div className="grid gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800">Müşteriler</h4>
+                <p className="text-2xl font-bold text-blue-600">{customers.length}</p>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800">Ürünler</h4>
+                <p className="text-2xl font-bold text-green-600">{products.length}</p>
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <h4 className="font-semibold text-purple-800">Satışlar</h4>
+                <p className="text-2xl font-bold text-purple-600">{orders.length}</p>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <h4 className="font-semibold text-orange-800">Giderler</h4>
+                <p className="text-2xl font-bold text-orange-600">{expenses.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
     }
 
     switch (activeView) {
@@ -998,6 +1198,16 @@ export default function DashboardPage() {
         <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
           <SidebarTrigger className="md:hidden" />
           <h1 className="text-xl font-headline font-semibold capitalize">{viewTitles[activeView]}</h1>
+          {process.env.NODE_ENV === 'development' && (
+            <Button 
+              onClick={() => setShowDebug(!showDebug)}
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+            >
+              {showDebug ? 'Debug Kapat' : 'Debug Aç'}
+            </Button>
+          )}
         </header>
         <main className="flex-1 p-4 md:p-6">{renderView()}</main>
       </SidebarInset>
